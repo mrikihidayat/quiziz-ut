@@ -1,0 +1,33 @@
+{
+  "name": "quizizz-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "@supabase/supabase-js": "^2.50.0",
+    "jspdf": "^2.5.2",
+    "lucide-react": "^0.400.0",
+    "next": "15.3.3",
+    "pdf-parse": "^1.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sweetalert2": "^11.14.5",
+    "nodemailer": "^6.9.14",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5",
+    "@types/nodemailer": "^6.4.14",
+    "@types/jsonwebtoken": "^9.0.5"
+  }
+}

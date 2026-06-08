@@ -1,0 +1,143 @@
+import { NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
+import { supabase } from '@/lib/supabase';
+import pdf from 'pdf-parse';
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+export async function POST(request: Request) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const matkulId = formData.get('matkul_id') as string;
+
+    if (!file || !matkulId) {
+      return NextResponse.json(
+        { error: 'File PDF atau Mata Kuliah belum dipilih.' },
+        { status: 400 }
+      );
+    }
+
+    // Konversi file ke Buffer agar bisa diproses pdf-parse
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Ekstraksi teks mentah dari PDF
+    const pdfData = await pdf(buffer);
+    const teksMentah = pdfData.text;
+    const jumlahHalaman = pdfData.numpages;
+
+    if (!teksMentah || teksMentah.trim().length < 50) {
+      return NextResponse.json(
+        { error: 'Teks dari PDF terlalu pendek atau tidak berhasil diekstrak. Pastikan PDF bukan hasil scan gambar.' },
+        { status: 422 }
+      );
+    }
+
+    // Prompt ketat untuk Gemini agar output JSON murni tanpa markdown
+    const promptText = `
+Kamu adalah dosen ahli dan pakar analisis soal ujian. Analisis teks soal ujian pilihan ganda berikut yang diekstrak dari dokumen PDF sebanyak ${jumlahHalaman} halaman.
+
+TUGAS KAMU:
+1. Identifikasi setiap butir soal pilihan ganda (A, B, C, D) dari teks berikut, abaikan header/footer/watermark/nomor halaman yang tidak relevan.
+2. Tentukan kunci jawaban yang paling benar dan valid secara akademis untuk setiap soal.
+3. Bersihkan dan rapikan teks pertanyaan serta setiap pilihan jawaban.
+
+ATURAN OUTPUT YANG WAJIB DIIKUTI:
+- Hasilkan output HANYA berupa JSON array murni.
+- DILARANG KERAS menggunakan format markdown, backtick tiga (\`\`\`), atau teks apapun selain JSON.
+- Setiap elemen array adalah objek dengan properti: "pertanyaan", "pilihan_a", "pilihan_b", "pilihan_c", "pilihan_d", "jawaban_benar".
+- Nilai "jawaban_benar" HANYA boleh berisi salah satu huruf kapital: "A", "B", "C", atau "D".
+- Semua nilai string harus dibungkus tanda kutip ganda yang valid.
+
+Contoh format output yang benar:
+[{"pertanyaan":"Apa ibu kota Indonesia?","pilihan_a":"Surabaya","pilihan_b":"Jakarta","pilihan_c":"Bandung","pilihan_d":"Medan","jawaban_benar":"B"}]
+
+Berikut adalah teks mentah dari PDF yang harus dianalisis:
+---
+${teksMentah}
+---
+`;
+
+    // Panggil Gemini 2.5 Flash
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: promptText,
+    });
+
+    let rawText = response.text ?? '';
+
+    // Bersihkan jika AI tetap menambahkan markdown fence
+    rawText = rawText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/gi, '')
+      .trim();
+
+    // Parse JSON hasil Gemini
+    let jsonSoalParsed: any[];
+    try {
+      jsonSoalParsed = JSON.parse(rawText);
+    } catch {
+      console.error('Gagal parse JSON dari Gemini. Raw output:', rawText);
+      return NextResponse.json(
+        { error: 'Gemini AI mengembalikan format yang tidak valid. Coba lagi atau periksa isi PDF.' },
+        { status: 502 }
+      );
+    }
+
+    if (!Array.isArray(jsonSoalParsed) || jsonSoalParsed.length === 0) {
+      return NextResponse.json(
+        { error: 'Tidak ditemukan soal pilihan ganda yang valid di dalam PDF ini.' },
+        { status: 422 }
+      );
+    }
+
+    // Validasi & mapping sebelum insert ke Supabase
+    const validJawaban = ['A', 'B', 'C', 'D'];
+    const dataSiapInsert = jsonSoalParsed
+      .filter((soal: any) =>
+        soal.pertanyaan &&
+        soal.pilihan_a &&
+        soal.pilihan_b &&
+        soal.pilihan_c &&
+        soal.pilihan_d &&
+        validJawaban.includes(soal.jawaban_benar)
+      )
+      .map((soal: any) => ({
+        matkul_id: matkulId,
+        pertanyaan: String(soal.pertanyaan).trim(),
+        pilihan_a: String(soal.pilihan_a).trim(),
+        pilihan_b: String(soal.pilihan_b).trim(),
+        pilihan_c: String(soal.pilihan_c).trim(),
+        pilihan_d: String(soal.pilihan_d).trim(),
+        jawaban_benar: soal.jawaban_benar as string,
+      }));
+
+    if (dataSiapInsert.length === 0) {
+      return NextResponse.json(
+        { error: 'Semua soal gagal validasi (format tidak lengkap atau jawaban tidak valid A/B/C/D).' },
+        { status: 422 }
+      );
+    }
+
+    // Bulk insert ke Supabase
+    const { error: supabaseError } = await supabase
+      .from('soal')
+      .insert(dataSiapInsert);
+
+    if (supabaseError) throw supabaseError;
+
+    return NextResponse.json({
+      success: true,
+      count: dataSiapInsert.length,
+      skipped: jsonSoalParsed.length - dataSiapInsert.length,
+    });
+
+  } catch (error: any) {
+    console.error('Error Server upload-pdf:', error);
+    return NextResponse.json(
+      { error: error.message || 'Terjadi kesalahan sistem internal.' },
+      { status: 500 }
+    );
+  }
+}

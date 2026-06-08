@@ -1,0 +1,489 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
+import { initTheme, setTheme } from '@/lib/theme';
+import Link from 'next/link';
+import {
+  Upload, BookOpen, Plus, Loader2, Sparkles,
+  FileText, ChevronRight, Trash2, AlertCircle, CheckCircle2,
+  Sun, Moon, ClipboardList,
+} from 'lucide-react';
+import Swal from 'sweetalert2';
+
+type Matkul = { id: string; nama_matkul: string; created_at: string };
+type Status = 'idle' | 'loading' | 'success' | 'error';
+
+export default function AdminDashboard() {
+  const [matkulList, setMatkulList] = useState<Matkul[]>([]);
+  const [selectedMatkul, setSelectedMatkul] = useState('');
+  const [newMatkulName, setNewMatkulName] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<Status>('idle');
+  const [addStatus, setAddStatus] = useState<Status>('idle');
+  const [message, setMessage] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const [theme, setThemeState] = useState<'dark' | 'light'>('dark');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const t = initTheme();
+    setThemeState(t);
+    fetchMatkul();
+  }, []);
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    setThemeState(next);
+  }
+
+  async function fetchMatkul() {
+    const { data } = await supabase.from('matkul').select('*').order('created_at', { ascending: false });
+    if (data) setMatkulList(data);
+  }
+
+  async function handleAddMatkul(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newMatkulName.trim()) return;
+    setAddStatus('loading');
+    const { data, error } = await supabase
+      .from('matkul')
+      .insert([{ nama_matkul: newMatkulName.trim() }])
+      .select();
+    if (!error && data) {
+      setMatkulList([data[0], ...matkulList]);
+      setNewMatkulName('');
+      setAddStatus('success');
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: `Mata kuliah "${data[0].nama_matkul}" berhasil ditambahkan.`,
+        timer: 2000,
+        showConfirmButton: false,
+        background: theme === 'dark' ? '#1a1a24' : '#ffffff',
+        color: theme === 'dark' ? '#e8e8f0' : '#1a1a2e',
+      });
+      setTimeout(() => setAddStatus('idle'), 2000);
+    } else {
+      setAddStatus('error');
+      Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menambahkan mata kuliah.', background: theme === 'dark' ? '#1a1a24' : '#ffffff', color: theme === 'dark' ? '#e8e8f0' : '#1a1a2e' });
+    }
+  }
+
+  async function handleDeleteMatkul(id: string, nama: string) {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Hapus Mata Kuliah?',
+      html: `Mata kuliah <b>"${nama}"</b> beserta seluruh soalnya akan dihapus permanen.`,
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#ff5c5c',
+      cancelButtonColor: '#7c6bff',
+      background: theme === 'dark' ? '#1a1a24' : '#ffffff',
+      color: theme === 'dark' ? '#e8e8f0' : '#1a1a2e',
+    });
+    if (!result.isConfirmed) return;
+    const { error } = await supabase.from('matkul').delete().eq('id', id);
+    if (!error) {
+      setMatkulList(matkulList.filter(m => m.id !== id));
+      Swal.fire({ icon: 'success', title: 'Dihapus!', text: `"${nama}" berhasil dihapus.`, timer: 1800, showConfirmButton: false, background: theme === 'dark' ? '#1a1a24' : '#ffffff', color: theme === 'dark' ? '#e8e8f0' : '#1a1a2e' });
+    }
+  }
+
+  async function handleUpload(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file || !selectedMatkul) {
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Pilih Mata Kuliah dan file PDF terlebih dahulu.', background: theme === 'dark' ? '#1a1a24' : '#ffffff', color: theme === 'dark' ? '#e8e8f0' : '#1a1a2e' });
+      return;
+    }
+
+    setUploadStatus('loading');
+    setMessage('Mengekstrak teks PDF dan mengirim ke Gemini AI...');
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('matkul_id', selectedMatkul);
+
+    try {
+      const res = await fetch('/api/upload-pdf', { method: 'POST', body: formData });
+      const result = await res.json();
+      if (res.ok) {
+        const skipMsg = result.skipped > 0 ? `\n${result.skipped} soal dilewati karena format tidak valid.` : '';
+        setMessage(`Berhasil! ${result.count} soal berhasil dimasukkan ke database.${skipMsg}`);
+        setUploadStatus('success');
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        Swal.fire({ icon: 'success', title: 'Upload Berhasil!', html: `<b>${result.count} soal</b> berhasil dimasukkan ke database.${skipMsg ? `<br><small>${skipMsg}</small>` : ''}`, background: theme === 'dark' ? '#1a1a24' : '#ffffff', color: theme === 'dark' ? '#e8e8f0' : '#1a1a2e' });
+      } else {
+        setMessage(result.error || 'Terjadi kesalahan tidak diketahui.');
+        setUploadStatus('error');
+        Swal.fire({ icon: 'error', title: 'Upload Gagal', text: result.error || 'Terjadi kesalahan tidak diketahui.', background: theme === 'dark' ? '#1a1a24' : '#ffffff', color: theme === 'dark' ? '#e8e8f0' : '#1a1a2e' });
+      }
+    } catch {
+      setMessage('Gagal terhubung ke server. Periksa koneksi internet.');
+      setUploadStatus('error');
+      Swal.fire({ icon: 'error', title: 'Koneksi Error', text: 'Gagal terhubung ke server.', background: theme === 'dark' ? '#1a1a24' : '#ffffff', color: theme === 'dark' ? '#e8e8f0' : '#1a1a2e' });
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped?.type === 'application/pdf') setFile(dropped);
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '0' }}>
+      {/* Header */}
+      <header style={{
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--surface)',
+        padding: '1.25rem 2rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Sparkles size={18} color="#fff" />
+          </div>
+          <div>
+            <h1 style={{ fontFamily: "'Space Mono', monospace", fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px' }}>
+              QuizForge
+            </h1>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 1 }}>Admin Panel — AI Question Engine</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            padding: '0.3rem 0.8rem',
+            borderRadius: 999,
+            background: 'rgba(124, 107, 255, 0.15)',
+            border: '1px solid rgba(124, 107, 255, 0.3)',
+            fontSize: '0.7rem',
+            color: 'var(--accent)',
+            fontWeight: 600,
+          }}>
+            Gemini 2.5 Flash
+          </div>
+          {/* Theme toggle */}
+          <button onClick={toggleTheme} title="Ganti Tema" style={{
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '0.45rem 0.6rem',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center',
+            color: 'var(--text-muted)',
+            transition: 'all 0.2s',
+          }}>
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
+      </header>
+
+      <main style={{ maxWidth: 1100, margin: '0 auto', padding: '2rem 1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+
+        {/* Panel Kiri: Manajemen Matkul */}
+        <div style={{ gridColumn: '1', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            padding: '1.5rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+              <BookOpen size={16} color="var(--accent)" />
+              <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text)' }}>Mata Kuliah</h2>
+            </div>
+
+            {/* Form tambah matkul */}
+            <form onSubmit={handleAddMatkul} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <input
+                type="text"
+                placeholder="Nama mata kuliah baru..."
+                value={newMatkulName}
+                onChange={(e) => setNewMatkulName(e.target.value)}
+                style={{
+                  flex: 1,
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '0.6rem 0.875rem',
+                  color: 'var(--text)',
+                  fontSize: '0.85rem',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <button type="submit" disabled={addStatus === 'loading'} style={{
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '0.6rem 1rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                fontFamily: 'inherit',
+              }}>
+                {addStatus === 'loading' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
+                Tambah
+              </button>
+            </form>
+
+            {/* List matkul */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: 380, overflowY: 'auto' }}>
+              {matkulList.length === 0 && (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', padding: '2rem 0' }}>
+                  Belum ada mata kuliah. Tambahkan dulu.
+                </p>
+              )}
+              {matkulList.map((m) => (
+                <div key={m.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  padding: '0.75rem 1rem',
+                  transition: 'border-color 0.2s',
+                }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)', flex: 1 }}>{m.nama_matkul}</span>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    {/* Tombol Tes Ujian */}
+                    <Link href={`/ujian/${m.id}`} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.25rem',
+                      fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-2)',
+                      textDecoration: 'none', padding: '0.3rem 0.75rem',
+                      background: 'rgba(255, 107, 157, 0.1)',
+                      border: '1px solid rgba(255, 107, 157, 0.3)',
+                      borderRadius: 6,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      <ClipboardList size={12} /> Tes
+                    </Link>
+                    {/* Tombol Kelola */}
+                    <Link href={`/admin/matkul/${m.id}`} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.25rem',
+                      fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-3)',
+                      textDecoration: 'none', padding: '0.3rem 0.75rem',
+                      background: 'rgba(0, 212, 161, 0.1)',
+                      border: '1px solid rgba(0, 212, 161, 0.25)',
+                      borderRadius: 6,
+                    }}>
+                      Kelola <ChevronRight size={12} />
+                    </Link>
+                    <button onClick={() => handleDeleteMatkul(m.id, m.nama_matkul)} style={{
+                      background: 'rgba(255, 92, 92, 0.1)',
+                      border: '1px solid rgba(255, 92, 92, 0.25)',
+                      borderRadius: 6,
+                      padding: '0.3rem 0.5rem',
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center',
+                      color: 'var(--danger)',
+                    }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Panel Kanan: Upload PDF */}
+        <div style={{ gridColumn: '2' }}>
+          <div style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            padding: '1.5rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+              <Upload size={16} color="var(--accent-2)" />
+              <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text)' }}>AI Auto-Generate Soal</h2>
+            </div>
+
+            <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Pilih Mata Kuliah
+                </label>
+                <select
+                  value={selectedMatkul}
+                  onChange={(e) => setSelectedMatkul(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    padding: '0.65rem 0.875rem',
+                    color: selectedMatkul ? 'var(--text)' : 'var(--text-muted)',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="">-- Pilih Mata Kuliah --</option>
+                  {matkulList.map(m => (
+                    <option key={m.id} value={m.id}>{m.nama_matkul}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Drop zone */}
+              <div>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Upload File PDF
+                </label>
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    border: `2px dashed ${dragOver ? 'var(--accent)' : file ? 'var(--accent-3)' : 'var(--border)'}`,
+                    borderRadius: 12,
+                    padding: '2rem',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    background: dragOver ? 'rgba(124, 107, 255, 0.05)' : file ? 'rgba(0, 212, 161, 0.05)' : 'var(--surface-2)',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {file ? (
+                    <>
+                      <FileText size={28} color="var(--accent-3)" style={{ margin: '0 auto 0.5rem' }} />
+                      <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent-3)' }}>{file.name}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={28} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Drag & drop atau klik untuk pilih PDF</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', opacity: 0.7, marginTop: 4 }}>Maksimal 20MB per file</p>
+                    </>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  style={{ display: 'none' }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={uploadStatus === 'loading'}
+                style={{
+                  width: '100%',
+                  padding: '0.85rem',
+                  background: uploadStatus === 'loading'
+                    ? 'var(--surface-2)'
+                    : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                  color: uploadStatus === 'loading' ? 'var(--text-muted)' : '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontFamily: 'inherit',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  cursor: uploadStatus === 'loading' ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                {uploadStatus === 'loading'
+                  ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Memproses PDF via Gemini AI...</>
+                  : <><Sparkles size={16} /> Proses dengan AI</>
+                }
+              </button>
+            </form>
+
+            {message && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '0.875rem 1rem',
+                borderRadius: 10,
+                border: `1px solid ${uploadStatus === 'success' ? 'rgba(0, 212, 161, 0.3)' : uploadStatus === 'error' ? 'rgba(255, 92, 92, 0.3)' : 'var(--border)'}`,
+                background: uploadStatus === 'success' ? 'rgba(0, 212, 161, 0.05)' : uploadStatus === 'error' ? 'rgba(255, 92, 92, 0.05)' : 'var(--surface-2)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.5rem',
+              }}>
+                {uploadStatus === 'success' && <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0, marginTop: 2 }} />}
+                {uploadStatus === 'error' && <AlertCircle size={16} color="var(--danger)" style={{ flexShrink: 0, marginTop: 2 }} />}
+                {uploadStatus === 'loading' && <Loader2 size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2, animation: 'spin 1s linear infinite' }} />}
+                <p style={{
+                  fontSize: '0.82rem',
+                  color: uploadStatus === 'success' ? 'var(--success)' : uploadStatus === 'error' ? 'var(--danger)' : 'var(--text-muted)',
+                  lineHeight: 1.5,
+                }}>
+                  {message}
+                </p>
+              </div>
+            )}
+
+            <div style={{
+              marginTop: '1rem',
+              padding: '0.875rem',
+              borderRadius: 10,
+              background: 'rgba(124, 107, 255, 0.07)',
+              border: '1px solid rgba(124, 107, 255, 0.15)',
+            }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Cara kerja:</span> PDF diekstrak dengan <code style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.7rem', color: 'var(--accent-2)' }}>pdf-parse</code>, teks dikirim ke Gemini 2.5 Flash untuk analisis soal & penetapan kunci jawaban, lalu disimpan massal ke Supabase.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats bar bawah */}
+        <div style={{
+          gridColumn: '1 / -1',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '1rem 1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '2rem',
+        }}>
+          <div>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Total Mata Kuliah</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent)', fontFamily: "'Space Mono', monospace" }}>{matkulList.length}</p>
+          </div>
+          <div style={{ width: 1, height: 40, background: 'var(--border)' }} />
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', flex: 1 }}>
+            Klik <span style={{ color: 'var(--accent-3)', fontWeight: 600 }}>Kelola</span> untuk mengelola soal secara manual, atau klik <span style={{ color: 'var(--accent-2)', fontWeight: 600 }}>Tes</span> untuk mulai latihan ujian per mata kuliah.
+          </p>
+        </div>
+      </main>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        input:focus, select:focus { border-color: var(--accent) !important; }
+        input::placeholder { color: var(--text-muted); }
+      `}</style>
+    </div>
+  );
+}

@@ -22,7 +22,7 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [scale, setScale] = useState(1.2);
+  const [scale, setScale] = useState(1.0); // base scale — actual render pakai fitScale * scale
   const [loading, setLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -67,7 +67,6 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
   const renderPage = useCallback(async (pageNum: number, zoom: number) => {
     if (!pdfDoc || !containerRef.current) return;
 
-    // Cancel render sebelumnya kalau masih jalan
     if (renderTaskRef.current) {
       renderTaskRef.current.cancel();
       renderTaskRef.current = null;
@@ -77,28 +76,38 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
 
     try {
       const page = await pdfDoc.getPage(pageNum);
-      const viewport = page.getViewport({ scale: zoom });
 
-      // Cari atau buat canvas
+      // Hitung scale supaya PDF pas dengan lebar container (fit-to-width)
+      // PDF A4 native width ~595pt. containerRef.clientWidth = lebar area render.
+      const containerWidth = containerRef.current.clientWidth || 600;
+      const baseViewport = page.getViewport({ scale: 1 });
+      const fitScale = containerWidth / baseViewport.width;
+      const finalScale = fitScale * zoom; // zoom = user zoom multiplier (0.6–3)
+
+      // devicePixelRatio: render canvas 2x/3x lebih tajam di layar HiDPI/mobile
+      const dpr = window.devicePixelRatio || 1;
+      const viewport = page.getViewport({ scale: finalScale });
+
       let canvas = containerRef.current.querySelector('canvas') as HTMLCanvasElement;
       if (!canvas) {
         canvas = document.createElement('canvas');
         canvas.style.display = 'block';
         canvas.style.margin = '0 auto';
-        canvas.style.maxWidth = '100%';
         containerRef.current.innerHTML = '';
         containerRef.current.appendChild(canvas);
       }
 
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      canvas.style.width = '100%';
-      canvas.style.height = 'auto';
+      // Canvas internal resolution = tampilan * dpr → tajam di retina/HP
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+      // CSS size = ukuran tampilan sebenarnya (bukan diperbesar)
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
 
       const ctx = canvas.getContext('2d')!;
-      const renderContext = { canvasContext: ctx, viewport };
+      ctx.scale(dpr, dpr); // scale context supaya PDF.js render di resolusi tinggi
 
-      const task = page.render(renderContext);
+      const task = page.render({ canvasContext: ctx, viewport });
       renderTaskRef.current = task;
       await task.promise;
       renderTaskRef.current = null;
@@ -305,8 +314,8 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
         <button onClick={zoomOut} disabled={scale <= 0.6} style={toolbarBtn(scale <= 0.6)}>
           <ZoomOut size={16} />
         </button>
-        <span style={{ fontSize: '0.78rem', color: '#666', fontFamily: 'monospace', minWidth: 40, textAlign: 'center' }}>
-          {Math.round(scale * 100)}%
+        <span style={{ fontSize: '0.78rem', color: '#666', fontFamily: 'monospace', minWidth: 48, textAlign: 'center' }}>
+          {scale === 1.0 ? 'Fit' : `${Math.round(scale * 100)}%`}
         </span>
         <button onClick={zoomIn} disabled={scale >= 3} style={toolbarBtn(scale >= 3)}>
           <ZoomIn size={16} />

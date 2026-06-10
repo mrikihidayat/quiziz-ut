@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ShieldCheck, ShieldAlert, Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 type Props = {
@@ -10,50 +10,115 @@ type Props = {
   penerimaName: string;
 };
 
-// Deteksi mobile browser
 function isMobileBrowser(): boolean {
   if (typeof navigator === 'undefined') return false;
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
 export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: Props) {
-  const [blobUrl, setBlobUrl] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const renderTaskRef = useRef<any>(null);
+
+  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [scale, setScale] = useState(1.2);
   const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [devToolsOpen, setDevToolsOpen] = useState(false);
   const devToolsRef = useRef(false);
   const [isBlackout, setIsBlackout] = useState(false);
   const isMobile = typeof window !== 'undefined' ? isMobileBrowser() : false;
 
-  // ── Fetch PDF → blob URL ─────────────────────────────────────────────────
+  // ── Load PDF.js + dokumen ────────────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
+
     async function loadPdf() {
       try {
+        // Dynamic import — Next.js bundle PDF.js hanya saat dibutuhkan
+        const pdfjsLib = await import('pdfjs-dist');
+
+        // Worker wajib di-set sebelum getDocument()
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
         const res = await fetch(pdfUrl);
         if (!res.ok) throw new Error('Gagal mengambil file PDF.');
-        const blob = await res.blob();
-        setBlobUrl(URL.createObjectURL(blob));
+        const arrayBuffer = await res.arrayBuffer();
+
+        const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        if (cancelled) return;
+        setPdfDoc(doc);
+        setTotalPages(doc.numPages);
       } catch (err: any) {
-        setLoadError(err.message || 'Gagal memuat PDF.');
+        if (!cancelled) setLoadError(err.message || 'Gagal memuat PDF.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
+
     loadPdf();
-    return () => { if (blobUrl) URL.revokeObjectURL(blobUrl); };
+    return () => { cancelled = true; };
   }, [pdfUrl]);
 
-  // ── Anti-Cheat: Blokir keyboard, copy, konteks menu ─────────────────────
+  // ── Render halaman ke canvas ─────────────────────────────────────────────
+  const renderPage = useCallback(async (pageNum: number, zoom: number) => {
+    if (!pdfDoc || !containerRef.current) return;
+
+    // Cancel render sebelumnya kalau masih jalan
+    if (renderTaskRef.current) {
+      renderTaskRef.current.cancel();
+      renderTaskRef.current = null;
+    }
+
+    setPageLoading(true);
+
+    try {
+      const page = await pdfDoc.getPage(pageNum);
+      const viewport = page.getViewport({ scale: zoom });
+
+      // Cari atau buat canvas
+      let canvas = containerRef.current.querySelector('canvas') as HTMLCanvasElement;
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.style.display = 'block';
+        canvas.style.margin = '0 auto';
+        canvas.style.maxWidth = '100%';
+        containerRef.current.innerHTML = '';
+        containerRef.current.appendChild(canvas);
+      }
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+
+      const ctx = canvas.getContext('2d')!;
+      const renderContext = { canvasContext: ctx, viewport };
+
+      const task = page.render(renderContext);
+      renderTaskRef.current = task;
+      await task.promise;
+      renderTaskRef.current = null;
+    } catch (err: any) {
+      if (err?.name !== 'RenderingCancelledException') {
+        console.error('Render error:', err);
+      }
+    } finally {
+      setPageLoading(false);
+    }
+  }, [pdfDoc]);
+
+  useEffect(() => {
+    if (pdfDoc) renderPage(currentPage, scale);
+  }, [pdfDoc, currentPage, scale, renderPage]);
+
+  // ── Anti-Cheat ───────────────────────────────────────────────────────────
   useEffect(() => {
     const blockContext = (e: MouseEvent) => e.preventDefault();
     const blockCopy = (e: ClipboardEvent) => e.preventDefault();
     const blockSelect = (e: Event) => e.preventDefault();
-
-    // Blokir touch callout & long-press select di mobile
-    const blockTouchStart = (e: TouchEvent) => {
-      // Jangan block scroll — hanya block jika multi-touch (pinch) atau hold
-      // preventDefault on touchstart would break scroll, so we rely on CSS
-    };
 
     const triggerScreenshotAlert = () => {
       setIsBlackout(true);
@@ -73,8 +138,15 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
       }, 100);
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        setIsBlackout(true);
+      } else {
+        setTimeout(() => setIsBlackout(false), 600);
+      }
+    };
+
     const blockKeys = (e: KeyboardEvent) => {
-      // Blokir DevTools
       if (
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K', 'E'].includes(e.key.toUpperCase())) ||
@@ -84,7 +156,6 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
         e.stopPropagation();
         return;
       }
-      // Deteksi screenshot
       const isWinShiftS = e.shiftKey && e.key === 'S' && !e.ctrlKey && !e.altKey && !e.metaKey;
       const isPrintScreen = e.key === 'PrintScreen';
       const isMacScreenshot = e.metaKey && e.shiftKey && ['3', '4', '5', 's', 'S'].includes(e.key);
@@ -92,16 +163,6 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
       if (isPrintScreen || isWinShiftS || isMacScreenshot || isCtrlPrint) {
         e.preventDefault();
         triggerScreenshotAlert();
-      }
-    };
-
-    // ── Deteksi visibilitychange (screenshot tools kadang suspend page) ────
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        setIsBlackout(true);
-      } else {
-        // Tunda buka blackout sedikit supaya screenshot sudah hitam
-        setTimeout(() => setIsBlackout(false), 600);
       }
     };
 
@@ -122,9 +183,9 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
     };
   }, []);
 
-  // ── Anti-Cheat: Deteksi DevTools via window size (desktop only) ──────────
+  // ── DevTools detection (desktop only) ───────────────────────────────────
   useEffect(() => {
-    if (isMobile) return; // Skip di mobile — tidak ada DevTools panel
+    if (isMobile) return;
     const THRESHOLD = 160;
     function checkDevTools() {
       const isOpen =
@@ -142,6 +203,11 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
     return () => { ro.disconnect(); window.removeEventListener('resize', checkDevTools); };
   }, [isMobile]);
 
+  const prevPage = () => setCurrentPage(p => Math.max(1, p - 1));
+  const nextPage = () => setCurrentPage(p => Math.min(totalPages, p + 1));
+  const zoomIn = () => setScale(s => Math.min(3, parseFloat((s + 0.2).toFixed(1))));
+  const zoomOut = () => setScale(s => Math.max(0.6, parseFloat((s - 0.2).toFixed(1))));
+
   const pageStyle: React.CSSProperties = {
     minHeight: '100vh',
     background: '#0f0f13',
@@ -153,7 +219,7 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
     MozUserSelect: 'none',
     msUserSelect: 'none',
     userSelect: 'none',
-    WebkitTouchCallout: 'none',
+    WebkitTouchCallout: 'none' as any,
   };
 
   if (loading) {
@@ -180,19 +246,17 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
     <div style={pageStyle}>
       <style>{GLOBAL_CSS}</style>
 
-      {/* ── Blackout Anti-Screenshot ──────────────────────────────────────── */}
+      {/* Blackout */}
       {isBlackout && (
         <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />
       )}
 
-      {/* ── DevTools Overlay (desktop only) ──────────────────────────────── */}
+      {/* DevTools Overlay */}
       {devToolsOpen && (
         <div style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          background: '#0f0f13',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          gap: '1rem', textAlign: 'center', padding: '2rem',
+          position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f13',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', gap: '1rem', textAlign: 'center', padding: '2rem',
         }}>
           <ShieldAlert size={56} color="#ff5c5c" />
           <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ff5c5c' }}>Akses Ditangguhkan</h2>
@@ -203,15 +267,14 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
         </div>
       )}
 
-      {/* ── Header ───────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div style={{
         background: '#1a1a24', borderBottom: '1px solid #2e2e42',
         padding: '0.75rem 1.25rem', display: 'flex',
-        alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: '0.5rem',
+        alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <img src="/logo.png" alt="Logo" style={{ height: 34, width: 'auto', display: 'block', borderRadius: 6 }} />
+          <img src="/logo.png" alt="Logo" style={{ height: 34, width: 'auto', borderRadius: 6 }} />
           <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{matkulNama}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -222,49 +285,53 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
         </div>
       </div>
 
-      {/* ── PDF Viewer ───────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0.75rem', gap: '0.75rem' }}>
-        <div style={{
-          flex: 1, borderRadius: 12, overflow: 'hidden',
-          border: '1px solid #2e2e42', position: 'relative',
-          minHeight: 'calc(100vh - 130px)',
-        }}>
-          {isMobile ? (
-            // ── Mobile: embed tag lebih kompatibel dari iframe ────────────
-            <object
-              data={`${blobUrl}#toolbar=0&navpanes=0`}
-              type="application/pdf"
-              style={{ width: '100%', height: '100%', minHeight: 'calc(100vh - 130px)', display: 'block', border: 'none' }}
-            >
-              {/* Fallback kalau object juga tidak didukung (sangat jarang) */}
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                height: '100%', minHeight: 'calc(100vh - 130px)', gap: '1rem', padding: '2rem', textAlign: 'center',
-              }}>
-                <div style={{ fontSize: '3rem' }}>📄</div>
-                <p style={{ color: '#7878a0', fontSize: '0.85rem', lineHeight: 1.6 }}>
-                  Browser kamu tidak mendukung preview PDF langsung.<br />
-                  Hubungi Riki jika ada masalah akses.
-                </p>
-              </div>
-            </object>
-          ) : (
-            // ── Desktop: iframe biasa ─────────────────────────────────────
-            <iframe
-              src={`${blobUrl}#toolbar=0&navpanes=0&scrollbar=1`}
-              style={{ width: '100%', height: '100%', minHeight: 'calc(100vh - 130px)', border: 'none', display: 'block' }}
-              title={matkulNama}
-            />
-          )}
-          {/* Overlay transparan mencegah right-click & drag di atas viewer */}
-          <div
-            style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'transparent', pointerEvents: isMobile ? 'none' : 'auto' }}
-            onContextMenu={(e) => e.preventDefault()}
-          />
-        </div>
-        <div style={{ textAlign: 'center', fontSize: '0.7rem', color: '#3a3a55', paddingBottom: '0.25rem', letterSpacing: '0.05em' }}>
-          Dokumen ini hanya untuk {penerimaName} — dilarang menyebarluaskan
-        </div>
+      {/* Toolbar navigasi + zoom */}
+      <div style={{
+        background: '#13131c', borderBottom: '1px solid #2e2e42',
+        padding: '0.5rem 1rem', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap',
+      }}>
+        <button onClick={prevPage} disabled={currentPage <= 1} style={toolbarBtn(currentPage <= 1)}>
+          <ChevronLeft size={16} />
+        </button>
+        <span style={{ fontSize: '0.82rem', color: '#aaa', fontFamily: 'monospace', minWidth: 80, textAlign: 'center' }}>
+          {pageLoading ? '...' : `${currentPage} / ${totalPages}`}
+        </span>
+        <button onClick={nextPage} disabled={currentPage >= totalPages} style={toolbarBtn(currentPage >= totalPages)}>
+          <ChevronRight size={16} />
+        </button>
+        <div style={{ width: 1, height: 20, background: '#2e2e42' }} />
+        <button onClick={zoomOut} disabled={scale <= 0.6} style={toolbarBtn(scale <= 0.6)}>
+          <ZoomOut size={16} />
+        </button>
+        <span style={{ fontSize: '0.78rem', color: '#666', fontFamily: 'monospace', minWidth: 40, textAlign: 'center' }}>
+          {Math.round(scale * 100)}%
+        </span>
+        <button onClick={zoomIn} disabled={scale >= 3} style={toolbarBtn(scale >= 3)}>
+          <ZoomIn size={16} />
+        </button>
+      </div>
+
+      {/* Canvas area */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '1rem', background: '#0a0a10' }}>
+        {pageLoading && (
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 10 }}>
+            <Loader2 size={32} color="#7c6bff" style={{ animation: 'spin 1s linear infinite' }} />
+          </div>
+        )}
+        <div
+          ref={containerRef}
+          style={{
+            borderRadius: 8, overflow: 'hidden',
+            boxShadow: '0 4px 32px rgba(0,0,0,0.6)',
+            opacity: pageLoading ? 0.4 : 1, transition: 'opacity 0.2s',
+            pointerEvents: 'none', // canvas tidak bisa di-select/drag
+          }}
+        />
+      </div>
+
+      <div style={{ textAlign: 'center', fontSize: '0.7rem', color: '#2a2a3a', padding: '0.5rem', letterSpacing: '0.05em' }}>
+        Dokumen ini hanya untuk {penerimaName} — dilarang menyebarluaskan
       </div>
 
       <footer style={{ borderTop: '1px solid #2a2a3a', padding: '0.875rem 1.5rem', textAlign: 'center', color: '#444', fontSize: '0.72rem' }}>
@@ -272,6 +339,18 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
       </footer>
     </div>
   );
+}
+
+function toolbarBtn(disabled: boolean): React.CSSProperties {
+  return {
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 32, height: 32, borderRadius: 8,
+    background: disabled ? 'transparent' : '#1e1e2e',
+    border: `1px solid ${disabled ? 'transparent' : '#2e2e42'}`,
+    color: disabled ? '#333' : '#aaa',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    transition: 'all 0.15s',
+  };
 }
 
 const GLOBAL_CSS = `
@@ -282,14 +361,11 @@ const GLOBAL_CSS = `
     -ms-user-select: none !important;
     user-select: none !important;
     -webkit-touch-callout: none !important;
-  }
-  /* Blokir long-press highlight di mobile */
-  * {
     -webkit-tap-highlight-color: transparent !important;
   }
-  img, iframe, object, embed {
-    pointer-events: none;
-    -webkit-user-drag: none;
+  img, canvas, iframe {
+    pointer-events: none !important;
+    -webkit-user-drag: none !important;
   }
   @media print {
     html, body { display: none !important; visibility: hidden !important; }

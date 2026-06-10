@@ -41,7 +41,8 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
         const pdfjsLib = await import('pdfjs-dist');
 
         // Worker wajib di-set sebelum getDocument()
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        // pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
         const res = await fetch(pdfUrl);
         if (!res.ok) throw new Error('Gagal mengambil file PDF.');

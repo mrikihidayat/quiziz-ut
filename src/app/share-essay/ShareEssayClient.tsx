@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, ShieldAlert, FileText, Loader2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 type Props = {
@@ -10,6 +10,12 @@ type Props = {
   penerimaName: string;
 };
 
+// Deteksi mobile browser
+function isMobileBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: Props) {
   const [blobUrl, setBlobUrl] = useState('');
   const [loading, setLoading] = useState(true);
@@ -17,8 +23,9 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
   const [devToolsOpen, setDevToolsOpen] = useState(false);
   const devToolsRef = useRef(false);
   const [isBlackout, setIsBlackout] = useState(false);
+  const isMobile = typeof window !== 'undefined' ? isMobileBrowser() : false;
 
-  // ── Fetch PDF → blob URL (bypass Chrome X-Frame-Options) ────────────────
+  // ── Fetch PDF → blob URL ─────────────────────────────────────────────────
   useEffect(() => {
     async function loadPdf() {
       try {
@@ -36,11 +43,17 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
     return () => { if (blobUrl) URL.revokeObjectURL(blobUrl); };
   }, [pdfUrl]);
 
-  // ── Anti-Cheat: Blokir keyboard, copy, screenshot ───────────────────────
+  // ── Anti-Cheat: Blokir keyboard, copy, konteks menu ─────────────────────
   useEffect(() => {
     const blockContext = (e: MouseEvent) => e.preventDefault();
     const blockCopy = (e: ClipboardEvent) => e.preventDefault();
     const blockSelect = (e: Event) => e.preventDefault();
+
+    // Blokir touch callout & long-press select di mobile
+    const blockTouchStart = (e: TouchEvent) => {
+      // Jangan block scroll — hanya block jika multi-touch (pinch) atau hold
+      // preventDefault on touchstart would break scroll, so we rely on CSS
+    };
 
     const triggerScreenshotAlert = () => {
       setIsBlackout(true);
@@ -82,11 +95,22 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
       }
     };
 
+    // ── Deteksi visibilitychange (screenshot tools kadang suspend page) ────
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        setIsBlackout(true);
+      } else {
+        // Tunda buka blackout sedikit supaya screenshot sudah hitam
+        setTimeout(() => setIsBlackout(false), 600);
+      }
+    };
+
     document.addEventListener('contextmenu', blockContext);
     document.addEventListener('keydown', blockKeys, true);
     document.addEventListener('copy', blockCopy);
     document.addEventListener('cut', blockCopy);
     document.addEventListener('selectstart', blockSelect);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       document.removeEventListener('contextmenu', blockContext);
@@ -94,11 +118,13 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
       document.removeEventListener('copy', blockCopy);
       document.removeEventListener('cut', blockCopy);
       document.removeEventListener('selectstart', blockSelect);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
-  // ── Anti-Cheat: Deteksi DevTools via window size ─────────────────────────
+  // ── Anti-Cheat: Deteksi DevTools via window size (desktop only) ──────────
   useEffect(() => {
+    if (isMobile) return; // Skip di mobile — tidak ada DevTools panel
     const THRESHOLD = 160;
     function checkDevTools() {
       const isOpen =
@@ -114,7 +140,7 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
     window.addEventListener('resize', checkDevTools);
     checkDevTools();
     return () => { ro.disconnect(); window.removeEventListener('resize', checkDevTools); };
-  }, []);
+  }, [isMobile]);
 
   const pageStyle: React.CSSProperties = {
     minHeight: '100vh',
@@ -159,7 +185,7 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
         <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />
       )}
 
-      {/* ── DevTools Overlay ──────────────────────────────────────────────── */}
+      {/* ── DevTools Overlay (desktop only) ──────────────────────────────── */}
       {devToolsOpen && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
@@ -203,13 +229,36 @@ export default function ShareEssayClient({ pdfUrl, matkulNama, penerimaName }: P
           border: '1px solid #2e2e42', position: 'relative',
           minHeight: 'calc(100vh - 130px)',
         }}>
-          <iframe
-            src={`${blobUrl}#toolbar=0&navpanes=0&scrollbar=1`}
-            style={{ width: '100%', height: '100%', minHeight: 'calc(100vh - 130px)', border: 'none', display: 'block' }}
-            title={matkulNama}
-          />
+          {isMobile ? (
+            // ── Mobile: embed tag lebih kompatibel dari iframe ────────────
+            <object
+              data={`${blobUrl}#toolbar=0&navpanes=0`}
+              type="application/pdf"
+              style={{ width: '100%', height: '100%', minHeight: 'calc(100vh - 130px)', display: 'block', border: 'none' }}
+            >
+              {/* Fallback kalau object juga tidak didukung (sangat jarang) */}
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                height: '100%', minHeight: 'calc(100vh - 130px)', gap: '1rem', padding: '2rem', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '3rem' }}>📄</div>
+                <p style={{ color: '#7878a0', fontSize: '0.85rem', lineHeight: 1.6 }}>
+                  Browser kamu tidak mendukung preview PDF langsung.<br />
+                  Hubungi Riki jika ada masalah akses.
+                </p>
+              </div>
+            </object>
+          ) : (
+            // ── Desktop: iframe biasa ─────────────────────────────────────
+            <iframe
+              src={`${blobUrl}#toolbar=0&navpanes=0&scrollbar=1`}
+              style={{ width: '100%', height: '100%', minHeight: 'calc(100vh - 130px)', border: 'none', display: 'block' }}
+              title={matkulNama}
+            />
+          )}
+          {/* Overlay transparan mencegah right-click & drag di atas viewer */}
           <div
-            style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'transparent', pointerEvents: 'none' }}
+            style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'transparent', pointerEvents: isMobile ? 'none' : 'auto' }}
             onContextMenu={(e) => e.preventDefault()}
           />
         </div>
@@ -234,7 +283,11 @@ const GLOBAL_CSS = `
     user-select: none !important;
     -webkit-touch-callout: none !important;
   }
-  img, iframe {
+  /* Blokir long-press highlight di mobile */
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  img, iframe, object, embed {
     pointer-events: none;
     -webkit-user-drag: none;
   }

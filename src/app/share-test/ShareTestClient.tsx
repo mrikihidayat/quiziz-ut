@@ -7,6 +7,11 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
+function isMobileBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 type Soal = {
   id: string;
   pertanyaan: string;
@@ -38,6 +43,7 @@ const swalDark = { background: '#1a1a24', color: '#e8e8f0' };
 
 export default function ShareTestClient({ matkulName, penerimaName, soalList }: Props) {
   const [fase, setFase] = useState<Fase>('setup');
+  const isMobile = typeof window !== 'undefined' ? isMobileBrowser() : false;
 
   // Setup options
   const [acak, setAcak] = useState(false);
@@ -85,6 +91,16 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
       }, 100);
     };
 
+    // ── Deteksi visibilitychange (screenshot tools suspend/hide page) ──
+    // Di mobile ini mencakup swipe ke recent apps, screenshot OS, dll
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        setIsBlackout(true);
+      } else {
+        setTimeout(() => setIsBlackout(false), 600);
+      }
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Blokir DevTools
       if (
@@ -116,12 +132,14 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
     document.addEventListener('selectstart', handleSelectStart);
     document.addEventListener('copy', handleCopy);
     window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       document.removeEventListener('contextmenu', handleContext);
       document.removeEventListener('selectstart', handleSelectStart);
       document.removeEventListener('copy', handleCopy);
       window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -244,7 +262,7 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
       .filter((v, i, a) => a.indexOf(v) === i && v <= soalList.length && v > 0);
 
     return (
-      <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none' }}>
+      <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' as any }}>
         {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
         <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -379,7 +397,7 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
     const soalSalah = soalUjian.filter(s => snap[s.id] !== s.jawaban_benar);
 
     return (
-      <div style={{ minHeight: '100vh', background: '#0f0f17', padding: '0 0 4rem', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none' }}>
+      <div style={{ minHeight: '100vh', background: '#0f0f17', padding: '0 0 4rem', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' as any }}>
         {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1.25rem' }}>
           <div style={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 18, padding: '2rem', textAlign: 'center', marginBottom: '1.5rem' }}>
@@ -459,7 +477,7 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
   const isDanger = pakaiWaktu && timeLeft <= 30 && timeLeft > 0;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none' }}>
+    <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' as any }}>
       {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
       <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -577,7 +595,20 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
         Dibuat oleh <span style={{ fontWeight: 700, color: '#666' }}>M. Riki Hidayat</span> — Mahasiswa SI UT
       </footer>
 
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+        *, *::before, *::after {
+          -webkit-user-select: none !important;
+          -moz-user-select: none !important;
+          -ms-user-select: none !important;
+          user-select: none !important;
+          -webkit-touch-callout: none !important;
+          -webkit-tap-highlight-color: transparent !important;
+        }
+        @media print {
+          html, body { display: none !important; visibility: hidden !important; }
+        }
+      `}</style>
     </div>
   );
 }

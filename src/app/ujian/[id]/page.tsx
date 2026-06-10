@@ -726,7 +726,7 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
           </Link>
           <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <BookOpen size={14} color="var(--accent-2)" />
+            <img src="/logo.png" alt="Logo" style={{ height: 34, width: 'auto', display: 'block', borderRadius: 6 }} />
             <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text)' }}>Tes Ujian — {matkulName}</span>
           </div>
         </div>
@@ -891,6 +891,9 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
           </button>
         </div>
       </main>
+      <footer style={{ borderTop: '1px solid var(--border)', padding: '1rem 1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+        Dibuat oleh <span style={{ fontWeight: 700, color: 'var(--text)' }}>M. Riki Hidayat</span> — Mahasiswa SI UT
+      </footer>
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );

@@ -296,113 +296,161 @@ export default function KelolaSoal({ params }: { params: Promise<{ id: string }>
     }
   }
 
-  function handleDownloadPDF() {
+  async function handleDownloadPDF() {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
-    const margin = 18;
+    const margin = 20;
     const usableW = pageW - margin * 2;
+    const lineH = 5;       // jarak antar baris teks
+    const gapOpsi = 1.2;   // jarak antar pilihan
+    const gapSoal = 4;     // jarak antar soal
+    const maxImgW = usableW;
+    const maxImgH = 60;    // tinggi maksimal gambar dalam mm
     let y = margin;
 
-    doc.setFillColor(124, 107, 255);
-    doc.rect(0, 0, pageW, 22, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text(matkulName, pageW / 2, 13, { align: 'center' });
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Bank Soal — ${soalList.length} Soal`, pageW / 2, 19, { align: 'center' });
-    y = 30;
+    // ── Helper: fetch gambar → base64 ──────────────────────────────────────
+    async function fetchImageBase64(url: string): Promise<{ data: string; w: number; h: number } | null> {
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        return await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+              const ratio = img.naturalWidth / img.naturalHeight;
+              const w = Math.min(maxImgW, img.naturalWidth * 0.264); // px → mm approx
+              const h = Math.min(maxImgH, w / ratio);
+              const finalW = h < w / ratio ? h * ratio : w;
+              resolve({ data: reader.result as string, w: finalW, h: Math.min(maxImgH, finalW / ratio) });
+            };
+            img.onerror = () => resolve(null);
+            img.src = reader.result as string;
+          };
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      } catch {
+        return null;
+      }
+    }
 
-    const answerColors: Record<string, [number, number, number]> = {
-      A: [124, 107, 255], B: [255, 107, 157], C: [0, 212, 161], D: [255, 179, 71],
+    // ── Header halaman pertama ──────────────────────────────────────────────
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text('PERKIRAAN SOAL UAS UNIVERSITAS TERBUKA', pageW / 2, y, { align: 'center' });
+    y += 6;
+
+    doc.setFontSize(11);
+    doc.text(matkulName.toUpperCase(), pageW / 2, y, { align: 'center' });
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`${soalList.length} SOAL`, pageW / 2, y, { align: 'center' });
+    y += 3;
+
+    // Garis bawah header
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageW - margin, y);
+    y += 6;
+
+    const addPageHeader = () => {
+      doc.addPage();
+      y = margin;
     };
 
-    soalList.forEach((soal, idx) => {
+    for (let idx = 0; idx < soalList.length; idx++) {
+      const soal = soalList[idx];
       const nomorTampil = idx + 1;
-      const estimasiTinggi = 14 + 28;
-      if (y + estimasiTinggi > pageH - margin) {
-        doc.addPage();
-        doc.setFillColor(124, 107, 255);
-        doc.rect(0, 0, pageW, 10, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.text(matkulName, pageW / 2, 7, { align: 'center' });
-        y = 16;
+
+      // ── Fetch gambar jika ada ──
+      let imgData: { data: string; w: number; h: number } | null = null;
+      if (soal.gambar_url) {
+        imgData = await fetchImageBase64(soal.gambar_url);
       }
 
-      doc.setFillColor(245, 245, 255);
-      doc.roundedRect(margin, y, usableW, 8, 2, 2, 'F');
-      doc.setTextColor(80, 70, 180);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.text(`Soal ${nomorTampil}`, margin + 3, y + 5.5);
-      y += 11;
-
-      doc.setTextColor(30, 30, 50);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      const pertLines = doc.splitTextToSize(soal.pertanyaan, usableW);
-      doc.text(pertLines, margin, y);
-      y += pertLines.length * 4.5 + 3;
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
 
-      const opts: Array<{ key: 'A' | 'B' | 'C' | 'D'; teks: string }> = [
+      // ── Estimasi tinggi soal ──
+      const pertanyaanTeks = `${nomorTampil}. ${soal.pertanyaan}`;
+      const pertLines = doc.splitTextToSize(pertanyaanTeks, usableW);
+      const pertH = pertLines.length * lineH;
+
+      const opsiList = [
         { key: 'A', teks: soal.pilihan_a },
         { key: 'B', teks: soal.pilihan_b },
         { key: 'C', teks: soal.pilihan_c },
         { key: 'D', teks: soal.pilihan_d },
       ];
+      let totalEstimasi = pertH + 2;
+      if (imgData) totalEstimasi += imgData.h + 4;
+      opsiList.forEach(({ teks }) => {
+        const lines = doc.splitTextToSize(`X. ${teks}`, usableW - 6);
+        totalEstimasi += lines.length * lineH + gapOpsi;
+      });
+      totalEstimasi += gapSoal;
 
-      opts.forEach(({ key, teks }) => {
+      if (y + totalEstimasi > pageH - margin) {
+        addPageHeader();
+      }
+
+      // ── Cetak pertanyaan ──
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.text(pertLines, margin, y);
+      y += pertH + 2;
+
+      // ── Cetak gambar jika ada ──
+      if (imgData) {
+        // Jika gambar tidak muat di halaman ini
+        if (y + imgData.h + 4 > pageH - margin) {
+          addPageHeader();
+        }
+        const imgX = margin + (usableW - imgData.w) / 2; // tengah
+        doc.addImage(imgData.data, 'JPEG', imgX, y, imgData.w, imgData.h);
+        y += imgData.h + 4;
+      }
+
+      // ── Pilihan jawaban ──
+      opsiList.forEach(({ key, teks }) => {
         const isCorrect = soal.jawaban_benar === key;
-        const [r, g, b] = answerColors[key];
         const linesTeks = doc.splitTextToSize(`${key}. ${teks}`, usableW - 6);
-        const boxH = linesTeks.length * 4.5 + 3.5;
+        const opsiH = linesTeks.length * lineH;
 
-        if (y + boxH > pageH - margin) {
-          doc.addPage();
-          doc.setFillColor(124, 107, 255);
-          doc.rect(0, 0, pageW, 10, 'F');
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(7);
-          doc.setFont('helvetica', 'bold');
-          doc.text(matkulName, pageW / 2, 7, { align: 'center' });
-          y = 16;
+        if (y + opsiH + 2 > pageH - margin) {
+          addPageHeader();
         }
 
         if (isCorrect) {
-          doc.setFillColor(r, g, b);
-          doc.setGState(new (doc as any).GState({ opacity: 0.15 }));
-          doc.roundedRect(margin, y, usableW, boxH, 1.5, 1.5, 'F');
-          doc.setGState(new (doc as any).GState({ opacity: 1 }));
-          doc.setDrawColor(r, g, b);
-          doc.setLineWidth(1.2);
-          doc.line(margin, y, margin, y + boxH);
-          doc.setLineWidth(0.2);
-          doc.setTextColor(r, g, b);
-          doc.setFont('helvetica', 'bold');
-        } else {
-          doc.setTextColor(80, 80, 100);
-          doc.setFont('helvetica', 'normal');
+          doc.setFillColor(255, 255, 153);
+          doc.rect(margin + 1, y - 3.5, usableW - 2, opsiH + 1.5, 'F');
         }
 
-        doc.setFontSize(8.5);
-        doc.text(linesTeks, margin + 4, y + 3.5);
-        y += boxH + 1.5;
+        doc.setFont('helvetica', isCorrect ? 'bold' : 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.text(linesTeks, margin + 4, y);
+        y += opsiH + gapOpsi;
       });
 
-      y += 5;
-    });
+      y += gapSoal;
+    }
 
+    // ── Nomor halaman ───────────────────────────────────────────────────────
     const totalPages = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
-      doc.setTextColor(160, 160, 180);
-      doc.setFontSize(7);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Halaman ${i} / ${totalPages}`, pageW / 2, pageH - 8, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setTextColor(130, 130, 130);
+      doc.text(`Halaman ${i} / ${totalPages}`, pageW / 2, pageH - 6, { align: 'center' });
     }
 
     const safeName = matkulName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -457,8 +505,9 @@ export default function KelolaSoal({ params }: { params: Promise<{ id: string }>
               <ArrowLeft size={14} /> <span className="hide-xs">Dashboard</span>
             </Link>
             <div style={{ width: 1, height: 18, background: 'var(--border)', flexShrink: 0 }} />
+            <img src="/logo.png" alt="Logo" style={{ height: 34, width: 'auto', display: 'block', flexShrink: 0, borderRadius: 6 }} />
+            <div style={{ width: 1, height: 18, background: 'var(--border)', flexShrink: 0 }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
-              <BookOpen size={13} color="var(--accent)" style={{ flexShrink: 0 }} />
               <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {matkulName}
               </span>
@@ -484,11 +533,13 @@ export default function KelolaSoal({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Row 2: action buttons — scrollable on mobile */}
+        {/* Row 2: action buttons */}
         <div style={{
           display: 'flex', gap: '0.5rem', marginTop: '0.65rem',
-          overflowX: 'auto', paddingBottom: '2px',
+          overflowX: 'auto', paddingBottom: '2px', alignItems: 'center',
         }}>
+          {/* spacer pushes buttons to the right */}
+          <div style={{ flex: 1 }} />
           <Link href={`/ujian/${matkulId}`} style={{
             display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0,
             fontSize: '0.76rem', fontWeight: 600, color: 'var(--accent-2)',
@@ -534,7 +585,7 @@ export default function KelolaSoal({ params }: { params: Promise<{ id: string }>
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.1rem' }}>
               <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: editingId ? 'var(--warning)' : 'var(--accent)' }}>
-                {editingId ? 'Edit Butir Soal' : '➕  Tambah Soal Baru'}
+                {editingId ? 'Edit Butir Soal' : 'Tambah Soal Baru'}
               </h3>
               <button onClick={handleCancel} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: 4 }}>
                 <X size={18} />
@@ -788,6 +839,17 @@ export default function KelolaSoal({ params }: { params: Promise<{ id: string }>
         header div::-webkit-scrollbar-track { background: transparent; }
         header div::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
       `}</style>
+
+      {/* ── Footer ── */}
+      <footer style={{
+        borderTop: '1px solid var(--border)',
+        padding: '1rem 1.5rem',
+        textAlign: 'center',
+        color: 'var(--text-muted)',
+        fontSize: '0.75rem',
+      }}>
+        Dibuat oleh <span style={{ fontWeight: 700, color: 'var(--text)' }}>M. Riki Hidayat</span> — Mahasiswa SI UT
+      </footer>
     </div>
   );
 }

@@ -54,10 +54,39 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isAlertOpenRef = useRef(false);
 
-  // ── Anti-Cheat ──
+  // ── Anti-Cheat + Anti-Copy + Anti-Screenshot ──
+  const [isBlackout, setIsBlackout] = useState(false);
+
   useEffect(() => {
+    // ── Blokir right-click ──
     const handleContext = (e: MouseEvent) => e.preventDefault();
+
+    // ── Blokir seleksi teks ──
+    const handleSelectStart = (e: Event) => e.preventDefault();
+    const handleCopy = (e: ClipboardEvent) => e.preventDefault();
+
+    // ── Deteksi screenshot & DevTools ──
+    const triggerScreenshotAlert = () => {
+      setIsBlackout(true);
+      setTimeout(() => {
+        Swal.fire({
+          title: '⛔ Tindakan Dilarang!',
+          html: `<p style="color:#e8e8f0;font-size:0.9rem;line-height:1.6">
+            Pengambilan screenshot terdeteksi.<br/>
+            <span style="color:#ff5c5c;font-weight:700">Aktivitas ini telah dicatat.</span>
+          </p>`,
+          showConfirmButton: true,
+          confirmButtonText: 'Saya Mengerti',
+          confirmButtonColor: '#ff5c5c',
+          background: '#1a1a24',
+          color: '#e8e8f0',
+          customClass: { popup: 'swal-dark-popup' },
+        }).then(() => setIsBlackout(false));
+      }, 100);
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Blokir DevTools
       if (
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key)) ||
@@ -65,13 +94,34 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
       ) {
         e.preventDefault();
         e.stopPropagation();
+        return;
+      }
+      // Blokir copy/select-all
+      if (e.ctrlKey && ['c', 'a', 'x'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+        return;
+      }
+      // Deteksi screenshot — semua kombinasi yang bisa ditangkap browser
+      const isWinShiftS = e.shiftKey && e.key === 'S' && !e.ctrlKey && !e.altKey; // Win+Shift+S
+      const isPrintScreen = e.key === 'PrintScreen';
+      const isMacScreenshot = e.metaKey && e.shiftKey && ['3', '4', '5', 's', 'S'].includes(e.key);
+      const isCtrlPrint = e.ctrlKey && e.key === 'PrintScreen';
+      if (isPrintScreen || isWinShiftS || isMacScreenshot || isCtrlPrint) {
+        e.preventDefault();
+        triggerScreenshotAlert();
       }
     };
+
     document.addEventListener('contextmenu', handleContext);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('selectstart', handleSelectStart);
+    document.addEventListener('copy', handleCopy);
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       document.removeEventListener('contextmenu', handleContext);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('selectstart', handleSelectStart);
+      document.removeEventListener('copy', handleCopy);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -194,12 +244,11 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
       .filter((v, i, a) => a.indexOf(v) === i && v <= soalList.length && v > 0);
 
     return (
-      <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none' }}>
+        {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
         <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg, #7c6bff, #ff6b9d)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BookOpen size={16} color="#fff" />
-            </div>
+            <img src="/logo.png" alt="Logo" style={{ height: 38, width: 'auto', display: 'block', borderRadius: 6 }} />
             <div>
               <p style={{ fontSize: '0.68rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ujian Latihan</p>
               <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8e8f0' }}>{matkulName}</p>
@@ -330,7 +379,8 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
     const soalSalah = soalUjian.filter(s => snap[s.id] !== s.jawaban_benar);
 
     return (
-      <div style={{ minHeight: '100vh', background: '#0f0f17', padding: '0 0 4rem', fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: '#0f0f17', padding: '0 0 4rem', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none' }}>
+        {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1.25rem' }}>
           <div style={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 18, padding: '2rem', textAlign: 'center', marginBottom: '1.5rem' }}>
             <p style={{ fontSize: '0.72rem', color: '#666', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
@@ -409,11 +459,15 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
   const isDanger = pakaiWaktu && timeLeft <= 30 && timeLeft > 0;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none' }}>
+      {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
       <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <p style={{ fontSize: '0.68rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ujian Latihan</p>
-          <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8e8f0' }}>{matkulName}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <img src="/logo.png" alt="Logo" style={{ height: 34, width: 'auto', display: 'block', borderRadius: 6 }} />
+          <div>
+            <p style={{ fontSize: '0.68rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ujian Latihan</p>
+            <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8e8f0' }}>{matkulName}</p>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {pakaiWaktu && (
@@ -518,6 +572,10 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList }: 
           {answeredCount} dari {soalUjian.length} soal dijawab
         </p>
       </main>
+
+      <footer style={{ borderTop: '1px solid #2a2a3a', padding: '0.875rem 1.5rem', textAlign: 'center', color: '#444', fontSize: '0.72rem' }}>
+        Dibuat oleh <span style={{ fontWeight: 700, color: '#666' }}>M. Riki Hidayat</span> — Mahasiswa SI UT
+      </footer>
 
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
     </div>

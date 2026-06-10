@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { initTheme, setTheme } from '@/lib/theme';
 import Link from 'next/link';
 import {
-  Upload, BookOpen, Plus, Loader2, LayoutDashboard,
+  Upload, BookOpen, Plus, Loader2, Sparkles,
   FileText, ChevronRight, Trash2, AlertCircle, CheckCircle2,
   Sun, Moon, ClipboardList, ClipboardPaste, Share2, Eye,
   ShieldCheck, ShieldOff, Copy, ExternalLink, KeyRound,
@@ -364,21 +364,20 @@ export default function AdminDashboard() {
     setOtpLoading(true);
     Swal.fire({
       title: 'Mengirim OTP...',
-      text: 'Silakan tunggu, kode sedang dikirim ke email Riki.',
+      text: 'Silakan tunggu, kode sedang dikirim ke email admin.',
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading(),
-      ...swalTheme(),
     });
     try {
       const res = await fetch('/api/admin/send-otp', { method: 'POST' });
       if (res.ok) {
         setIsOtpSent(true);
-        Swal.fire({ icon: 'success', title: 'OTP Terkirim!', text: 'Periksa kotak masuk email Riki.', timer: 2000, showConfirmButton: false, ...swalTheme() });
+        Swal.fire({ icon: 'success', title: 'OTP Terkirim! 🚀', text: 'Periksa kotak masuk email admin.', timer: 2000, showConfirmButton: false });
       } else {
-        Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Gagal mengirim email OTP, hubungi server.', ...swalTheme() });
+        Swal.fire('Gagal!', 'Gagal mengirim email OTP, hubungi server.', 'error');
       }
     } catch {
-      Swal.fire({ icon: 'error', title: 'Error!', text: 'Terjadi gangguan koneksi jaringan.', ...swalTheme() });
+      Swal.fire('Error!', 'Terjadi gangguan koneksi jaringan.', 'error');
     } finally {
       setOtpLoading(false);
     }
@@ -386,7 +385,7 @@ export default function AdminDashboard() {
 
   async function handleVerifikasiOtp(e: React.FormEvent | React.MouseEvent) {
     e.preventDefault();
-    if (otpInput.length < 6) return Swal.fire({ icon: 'warning', title: 'Peringatan!', text: 'Masukkan 6 digit angka lengkap.', ...swalTheme() });
+    if (otpInput.length < 6) return Swal.fire('Peringatan!', 'Masukkan 6 digit angka lengkap.', 'warning');
     setOtpLoading(true);
     try {
       const res = await fetch('/api/admin/verify-otp', {
@@ -398,12 +397,12 @@ export default function AdminDashboard() {
       if (res.ok && data.token) {
         localStorage.setItem('admin_token', data.token);
         setIsAuthenticated(true);
-        Swal.fire({ icon: 'success', title: 'Akses Diberikan!', text: 'Selamat datang kembali di Dashboard Riki.', timer: 1500, showConfirmButton: false, ...swalTheme() });
+        Swal.fire({ icon: 'success', title: 'Akses Diberikan! 🔓', text: 'Selamat datang kembali di Dashboard Admin.', timer: 1500, showConfirmButton: false });
       } else {
-        Swal.fire({ icon: 'error', title: 'Akses Ditolak!', text: data.error || 'Kode salah.', ...swalTheme() });
+        Swal.fire('Akses Ditolak!', data.error || 'Kode salah.', 'error');
       }
     } catch {
-      Swal.fire({ icon: 'error', title: 'Error!', text: 'Terjadi kesalahan verifikasi jaringan.', ...swalTheme() });
+      Swal.fire('Error!', 'Terjadi kesalahan verifikasi jaringan.', 'error');
     } finally {
       setOtpLoading(false);
     }
@@ -527,7 +526,7 @@ export default function AdminDashboard() {
             }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c6bff', boxShadow: '0 0 6px #7c6bff' }} />
               <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#a78bfa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Secure Access
+                Secure Admin Access
               </span>
             </div>
 
@@ -546,13 +545,13 @@ export default function AdminDashboard() {
             {/* Title */}
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: 8, lineHeight: 1.2 }}>
               <span className="shimmer-text">
-                {isOtpSent ? 'Masukkan Kode OTP' : 'Verifikasi Riki'}
+                {isOtpSent ? 'Masukkan Kode OTP' : 'Verifikasi Admin'}
               </span>
             </h1>
             <p style={{ color: 'rgba(170,170,200,0.7)', fontSize: '0.875rem', marginBottom: '2rem', lineHeight: 1.6 }}>
               {isOtpSent
-                ? 'Kode 6 digit telah dikirim ke email tujuan Riki. Segera masukkan sebelum kedaluwarsa.'
-                : 'Dashboard ini dilindungi OTP. Klik tombol di bawah untuk mengirim kode akses ke email Riki.'}
+                ? 'Kode 6 digit telah dikirim ke email tujuan admin. Segera masukkan sebelum kedaluwarsa.'
+                : 'Dashboard ini dilindungi OTP. Klik tombol di bawah untuk mengirim kode akses ke email admin.'}
             </p>
 
             {/* Content based on state */}
@@ -648,7 +647,7 @@ export default function AdminDashboard() {
 
             {/* Footer note */}
             <p style={{ marginTop: '1.75rem', fontSize: '0.72rem', color: 'rgba(120,120,160,0.5)', letterSpacing: '0.03em' }}>
-              Sistem Kuis UT · Akses terbatas untuk Riki
+              Sistem Kuis UT · Akses terbatas untuk admin
             </p>
           </div>
         </div>
@@ -670,12 +669,32 @@ export default function AdminDashboard() {
         gap: '0.5rem',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <img src="/logo.png" alt="Logo" style={{ height: 44, width: 'auto', display: 'block', borderRadius: 8 }} />
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '1.05rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>QuiziZ <span style={{ color: 'var(--accent)' }}>UT</span></span>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Sparkles size={18} color="#fff" />
+          </div>
+          <div>
+            <h1 style={{ fontFamily: "'Space Mono', monospace", fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px' }}>
+              UAS Simulasi
+            </h1>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 1 }}>Admin Panel — AI Question Engine</p>
           </div>
         </div>
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <div style={{
+            background: 'rgba(124, 107, 255, 0.1)',
+            borderRadius: 8,
+            padding: '0.45rem 0.8rem',
+            border: '1px solid rgba(124, 107, 255, 0.3)',
+            fontSize: '0.7rem',
+            color: 'var(--accent)',
+            fontWeight: 600,
+          }}>
+            Gemini 2.5 Flash
+          </div>
           <button onClick={handleViewLinks} title="Lihat semua share link" style={{
             background: 'rgba(0, 212, 161, 0.1)',
             border: '1px solid rgba(0, 212, 161, 0.3)',
@@ -728,7 +747,7 @@ export default function AdminDashboard() {
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {(['PG', 'ESSAY'] as TipeUjian[]).map(tipe => (
                   <button key={tipe} type="button" onClick={() => setNewMatkulTipe(tipe)} style={{ flex: 1, padding: '0.35rem 0.5rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: 7, border: newMatkulTipe === tipe ? '2px solid var(--accent)' : '1px solid var(--border)', background: newMatkulTipe === tipe ? 'rgba(124,107,255,0.15)' : 'var(--surface-2)', color: newMatkulTipe === tipe ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                    {tipe === 'PG' ? 'Pilihan Ganda' : 'Essay'}
+                    {tipe === 'PG' ? '📝 Pilihan Ganda' : '✍️ Essay'}
                   </button>
                 ))}
               </div>
@@ -798,26 +817,22 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                     {m.tipe_ujian === 'ESSAY' ? (
                       <>
-                        {/* Essay: Share | View | Kelola */}
-                        <button onClick={() => handleGenerateEssayLink(m.id, m.nama_matkul)} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: '#a78bfa', padding: '0.3rem 0.75rem', background: 'rgba(124,107,255,0.1)', border: '1px solid rgba(124,107,255,0.3)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
-                          <Share2 size={12} /> Share
+                        {/* Essay: Kelola PDF, View, Share */}
+                        <button onClick={() => { setEssayUploadModal({ open: true, matkulId: m.id, matkulNama: m.nama_matkul }); setEssayFile(null); setEssayUploadStatus('idle'); setEssayUploadMsg(''); }} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-3)', padding: '0.3rem 0.75rem', background: 'rgba(0,212,161,0.1)', border: '1px solid rgba(0,212,161,0.25)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                          <Upload size={12} /> Kelola
                         </button>
-                        {m.pdf_url ? (
+                        {m.pdf_url && (
                           <a href={m.pdf_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-2)', textDecoration: 'none', padding: '0.3rem 0.75rem', background: 'rgba(255,107,157,0.1)', border: '1px solid rgba(255,107,157,0.3)', borderRadius: 6, whiteSpace: 'nowrap' }}>
                             <Eye size={12} /> View
                           </a>
-                        ) : (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0.3rem 0.75rem', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, whiteSpace: 'nowrap', opacity: 0.4 }}>
-                            <Eye size={12} /> View
-                          </span>
                         )}
-                        <button onClick={() => { setEssayUploadModal({ open: true, matkulId: m.id, matkulNama: m.nama_matkul }); setEssayFile(null); setEssayUploadStatus('idle'); setEssayUploadMsg(''); }} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-3)', padding: '0.3rem 0.75rem', background: 'rgba(0,212,161,0.1)', border: '1px solid rgba(0,212,161,0.25)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
-                          <Upload size={12} /> Kelola
+                        <button onClick={() => handleGenerateEssayLink(m.id, m.nama_matkul)} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: '#a78bfa', padding: '0.3rem 0.75rem', background: 'rgba(124,107,255,0.1)', border: '1px solid rgba(124,107,255,0.3)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                          <Share2 size={12} /> Share
                         </button>
                       </>
                     ) : (
                       <>
-                        {/* PG: Share | Tes | Kelola */}
+                        {/* PG: Share, Tes, Kelola */}
                         <button onClick={() => handleGenerateLink(m.id, m.nama_matkul)} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: '#a78bfa', padding: '0.3rem 0.75rem', background: 'rgba(124,107,255,0.1)', border: '1px solid rgba(124,107,255,0.3)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
                           <Share2 size={12} /> Share
                         </button>
@@ -848,8 +863,8 @@ export default function AdminDashboard() {
             padding: '1.5rem',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-              <LayoutDashboard size={16} color="var(--accent-2)" />
-              <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text)' }}>Auto-Generate Soal</h2>
+              <Sparkles size={16} color="var(--accent-2)" />
+              <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text)' }}>AI Auto-Generate Soal</h2>
             </div>
 
             {/* ── Dual-Tab UI ── */}
@@ -1027,7 +1042,7 @@ export default function AdminDashboard() {
               >
                 {uploadStatus === 'loading'
                   ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Memproses via Gemini AI...</>
-                  : <><BookOpen size={16} /> Proses dengan AI</>
+                  : <><Sparkles size={16} /> Proses dengan AI</>
                 }
               </button>
             </form>
@@ -1057,18 +1072,28 @@ export default function AdminDashboard() {
             )}          
           </div>
         </div>
-      </main>
 
-      {/* ── Footer ── */}
-      <footer style={{
-        borderTop: '1px solid var(--border)',
-        padding: '1rem 1.5rem',
-        textAlign: 'center',
-        color: 'var(--text-muted)',
-        fontSize: '0.75rem',
-      }}>
-        Dibuat oleh <span style={{ fontWeight: 700, color: 'var(--text)' }}>M. Riki Hidayat</span> — Mahasiswa SI UT
-      </footer>
+        {/* Stats bar bawah */}
+        <div style={{
+          gridColumn: 'unset',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '1rem 1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '2rem',
+        }}>
+          <div>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Total Mata Kuliah</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent)', fontFamily: "'Space Mono', monospace" }}>{matkulList.length}</p>
+          </div>
+          <div style={{ width: 1, height: 40, background: 'var(--border)' }} />
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', flex: 1 }}>
+            Untuk matkul <b>PG</b>: klik <span style={{ color: 'var(--accent-3)', fontWeight: 600 }}>Kelola</span> (soal), <span style={{ color: 'var(--accent-2)', fontWeight: 600 }}>Tes</span> (latihan), atau <span style={{ color: '#a78bfa', fontWeight: 600 }}>Share</span> (bagi link). Untuk matkul <b>Essay</b>: <span style={{ color: 'var(--accent-3)', fontWeight: 600 }}>Kelola</span> (upload PDF), <span style={{ color: 'var(--accent-2)', fontWeight: 600 }}>View</span> (lihat PDF), atau <span style={{ color: '#a78bfa', fontWeight: 600 }}>Share</span> (bagi link aman).
+          </p>
+        </div>
+      </main>
 
 
       {/* ── Modal: Essay PDF Upload ── */}

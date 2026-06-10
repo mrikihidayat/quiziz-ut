@@ -37,7 +37,7 @@ export default async function ShareTestPage({ searchParams }: PageProps) {
     // ── 4. Token sudah terkunci → cocokkan User-Agent ──
     if (tokenData.saved_device_agent !== userAgent) {
       return (
-        <ErrorPage message="Akses Ditolak! Link ini sudah terkunci pada perangkat lain. Hubungi admin untuk membuka blokir." locked />
+        <ErrorPage message="Akses Ditolak! Link ini sudah terkunci pada perangkat lain. Hubungi Riki untuk membuka blokir." locked />
       );
     }
   }

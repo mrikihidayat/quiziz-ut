@@ -108,6 +108,7 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
   const [resumeSisa, setResumeSisa] = useState(0);
 
   const [theme, setThemeState] = useState<'dark' | 'light'>('dark');
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
 
   useEffect(() => {
     const t = initTheme();
@@ -597,12 +598,8 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
 
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-        <header style={{
-          borderBottom: '1px solid var(--border)', background: 'var(--surface)',
-          padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: '0.5rem', flexWrap: 'nowrap',
-        }}>
-          {/* Kiri: tombol back + nama matkul */}
+        <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', position: 'relative' }}>
+          {/* Kiri: back + nama */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: '1 1 0' }}>
             <button onClick={async () => {
               const r = await Swal.fire({
@@ -626,7 +623,7 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
             </div>
           </div>
 
-          {/* Kanan: timer + counter + riwayat + theme */}
+          {/* Kanan: timer (selalu keliatan) + hamburger */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
             {pakaiWaktu && (
               <div style={{
@@ -646,23 +643,52 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
                 </span>
               </div>
             )}
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.82rem', fontWeight: 700, color: 'var(--accent)', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.35rem 0.5rem', whiteSpace: 'nowrap' }}>
-              {currentIdx + 1}/{soalUjian.length}
-            </span>
-            <button onClick={showRiwayat} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem 0.5rem',
-              borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)',
-              color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
-            }} title="Riwayat">
-              <ScrollText size={14} />
-            </button>
-            <button onClick={toggleThemeHandler} style={{
-              background: 'var(--surface-2)', border: '1px solid var(--border)',
-              borderRadius: 8, padding: '0.35rem 0.5rem', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            {/* Hamburger button */}
+            <button onClick={() => setNavMenuOpen(o => !o)} style={{
+              display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px',
+              width: 36, height: 36, background: 'var(--surface-2)', border: '1px solid var(--border)',
+              borderRadius: 8, cursor: 'pointer', flexShrink: 0, padding: 0,
             }}>
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
+              <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', opacity: navMenuOpen ? 0 : 1 }} />
+              <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
             </button>
           </div>
+
+          {/* Dropdown menu */}
+          {navMenuOpen && (
+            <div style={{
+              position: 'absolute', top: '100%', right: '1rem', zIndex: 100,
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 10, padding: '0.4rem', minWidth: 180,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            }} onClick={() => setNavMenuOpen(false)}>
+              {/* Counter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 7, marginBottom: '0.2rem', background: 'var(--surface-2)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Soal</span>
+                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent)', marginLeft: 'auto' }}>{currentIdx + 1} / {soalUjian.length}</span>
+              </div>
+              {/* Riwayat */}
+              <button onClick={showRiwayat} style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+                padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none',
+                border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+                fontSize: '0.82rem', fontFamily: 'inherit', textAlign: 'left',
+              }}>
+                <ScrollText size={14} /> Riwayat
+              </button>
+              {/* Theme toggle */}
+              <button onClick={toggleThemeHandler} style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+                padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none',
+                border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+                fontSize: '0.82rem', fontFamily: 'inherit', textAlign: 'left',
+              }}>
+                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+              </button>
+            </div>
+          )}
         </header>
 
         <div style={{ height: 4, background: 'var(--border)' }}>

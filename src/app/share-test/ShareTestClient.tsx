@@ -90,7 +90,8 @@ const ICON_HISTORY = '<path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.13-5.36L
 
 export default function ShareTestClient({ matkulName, penerimaName, soalList, ujianId }: Props) {
   const [fase, setFase] = useState<Fase>('setup');
-  const isMobile = typeof window !== 'undefined' ? isMobileBrowser() : false;
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => { setIsMobile(isMobileBrowser()); }, []);
 
   const [acak, setAcak] = useState(false);
   const [jumlahSoal, setJumlahSoal] = useState(Math.min(10, soalList.length));
@@ -114,6 +115,7 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList, uj
   // Check if there's a resumable session
   const [hasResume, setHasResume] = useState(false);
   const [resumeSisa, setResumeSisa] = useState(0);
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const t = localStorage.getItem(TIMER_KEY);
@@ -645,7 +647,7 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList, uj
     return (
       <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' as any }}>
         {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
-        <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+        <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: '1 1 0' }}>
             <img src="/logo.png" alt="Logo" style={{ height: 30, width: 'auto', display: 'block', borderRadius: 6, flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
@@ -653,14 +655,24 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList, uj
               <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#e8e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{matkulName}</p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-            <span style={{ fontSize: '0.68rem', color: '#888', background: '#12121c', border: '1px solid #2a2a3a', borderRadius: 6, padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', maxWidth: isMobile ? 80 : 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              👤 {penerimaName}
-            </span>
-            <button onClick={showRiwayat} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem 0.5rem', borderRadius: 8, background: '#12121c', border: '1px solid #2a2a3a', color: '#888', cursor: 'pointer', fontFamily: 'inherit' }} title="Riwayat">
-              <ScrollText size={14} />
-            </button>
-          </div>
+          {/* Hamburger */}
+          <button onClick={() => setNavMenuOpen(o => !o)} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px', width: 36, height: 36, background: '#12121c', border: '1px solid #2a2a3a', borderRadius: 8, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+            <span style={{ display: 'block', width: 16, height: 2, background: '#888', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
+            <span style={{ display: 'block', width: 16, height: 2, background: '#888', borderRadius: 2, transition: 'all 0.2s', opacity: navMenuOpen ? 0 : 1 }} />
+            <span style={{ display: 'block', width: 16, height: 2, background: '#888', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
+          </button>
+          {/* Dropdown */}
+          {navMenuOpen && (
+            <div style={{ position: 'absolute', top: '100%', right: '1rem', zIndex: 100, background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 10, padding: '0.4rem', minWidth: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }} onClick={() => setNavMenuOpen(false)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 7, background: '#12121c', marginBottom: '0.2rem' }}>
+                <span style={{ fontSize: '0.72rem', color: '#888' }}>👤</span>
+                <span style={{ fontSize: '0.78rem', color: '#aaa', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{penerimaName}</span>
+              </div>
+              <button onClick={showRiwayat} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.82rem', fontFamily: 'inherit', textAlign: 'left' }}>
+                <ScrollText size={14} /> Riwayat
+              </button>
+            </div>
+          )}
         </header>
 
         <main style={{ maxWidth: 520, margin: '0 auto', padding: '2.5rem 1.25rem' }}>
@@ -791,7 +803,7 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList, uj
     return (
       <div style={{ minHeight: '100vh', background: '#0f0f17', padding: '0 0 4rem', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' as any }}>
         {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
-        <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+        <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: '1 1 0' }}>
             <img src="/logo.png" alt="Logo" style={{ height: 30, width: 'auto', display: 'block', borderRadius: 6, flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
@@ -799,9 +811,20 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList, uj
               <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#e8e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{matkulName}</p>
             </div>
           </div>
-          <button onClick={showRiwayat} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem 0.5rem', borderRadius: 8, background: '#12121c', border: '1px solid #2a2a3a', color: '#888', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }} title="Riwayat">
-            <ScrollText size={14} />
+          {/* Hamburger */}
+          <button onClick={() => setNavMenuOpen(o => !o)} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px', width: 36, height: 36, background: '#12121c', border: '1px solid #2a2a3a', borderRadius: 8, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+            <span style={{ display: 'block', width: 16, height: 2, background: '#888', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
+            <span style={{ display: 'block', width: 16, height: 2, background: '#888', borderRadius: 2, transition: 'all 0.2s', opacity: navMenuOpen ? 0 : 1 }} />
+            <span style={{ display: 'block', width: 16, height: 2, background: '#888', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
           </button>
+          {/* Dropdown */}
+          {navMenuOpen && (
+            <div style={{ position: 'absolute', top: '100%', right: '1rem', zIndex: 100, background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 10, padding: '0.4rem', minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }} onClick={() => setNavMenuOpen(false)}>
+              <button onClick={showRiwayat} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.82rem', fontFamily: 'inherit', textAlign: 'left' }}>
+                <ScrollText size={14} /> Riwayat
+              </button>
+            </div>
+          )}
         </header>
 
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1.25rem' }}>
@@ -878,34 +901,77 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList, uj
   return (
     <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' as any }}>
       {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
-      <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <img src="/logo.png" alt="Logo" style={{ height: 34, width: 'auto', display: 'block', borderRadius: 6 }} />
-          <div>
-            <p style={{ fontSize: '0.68rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ujian Latihan</p>
-            <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8e8f0' }}>{matkulName}</p>
+      <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', position: 'relative' }}>
+        {/* Logo + Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: '1 1 0' }}>
+          <img src="/logo.png" alt="Logo" style={{ height: 30, width: 'auto', display: 'block', borderRadius: 6, flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: '0.6rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ujian Latihan</p>
+            <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#e8e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{matkulName}</p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {pakaiWaktu && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', borderRadius: 8, background: isDanger ? 'rgba(255,92,92,0.15)' : isWarning ? 'rgba(255,179,71,0.15)' : '#12121c', border: `1px solid ${isDanger ? 'rgba(255,92,92,0.4)' : isWarning ? 'rgba(255,179,71,0.4)' : '#2a2a3a'}` }}>
-              <Clock size={13} color={isDanger ? '#ff5c5c' : isWarning ? '#ffb347' : '#555'} />
-              <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 700, color: isDanger ? '#ff5c5c' : isWarning ? '#ffb347' : '#888', animation: isDanger ? 'pulse 0.7s ease-in-out infinite' : 'none' }}>
-                {formatTimer(timeLeft)}
-              </span>
+
+        {/* Desktop nav items (hidden on mobile) */}
+        {!isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            {pakaiWaktu && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', borderRadius: 8, background: isDanger ? 'rgba(255,92,92,0.15)' : isWarning ? 'rgba(255,179,71,0.15)' : '#12121c', border: `1px solid ${isDanger ? 'rgba(255,92,92,0.4)' : isWarning ? 'rgba(255,179,71,0.4)' : '#2a2a3a'}` }}>
+                <Clock size={13} color={isDanger ? '#ff5c5c' : isWarning ? '#ffb347' : '#555'} />
+                <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 700, color: isDanger ? '#ff5c5c' : isWarning ? '#ffb347' : '#888', animation: isDanger ? 'pulse 0.7s ease-in-out infinite' : 'none' }}>
+                  {formatTimer(timeLeft)}
+                </span>
+              </div>
+            )}
+            <button onClick={showRiwayat} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.65rem', borderRadius: 8, background: '#12121c', border: '1px solid #2a2a3a', color: '#888', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}>
+              <ScrollText size={13} /><span>Riwayat</span>
+            </button>
+            <span style={{ fontSize: '0.72rem', color: '#888', background: '#12121c', border: '1px solid #2a2a3a', borderRadius: 6, padding: '0.25rem 0.6rem' }}>
+              👤 {penerimaName}
+            </span>
+            <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 700, color: '#7c6bff' }}>
+              {currentIdx + 1}/{soalUjian.length}
+            </span>
+          </div>
+        )}
+
+        {/* Mobile: nomor soal always visible + hamburger */}
+        {isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 700, color: '#7c6bff' }}>
+              {currentIdx + 1}/{soalUjian.length}
+            </span>
+            <button onClick={() => setNavMenuOpen(o => !o)} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px', width: 36, height: 36, background: '#12121c', border: '1px solid #2a2a3a', borderRadius: 8, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+              <span style={{ display: 'block', width: 16, height: 2, background: '#888', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
+              <span style={{ display: 'block', width: 16, height: 2, background: '#888', borderRadius: 2, transition: 'all 0.2s', opacity: navMenuOpen ? 0 : 1 }} />
+              <span style={{ display: 'block', width: 16, height: 2, background: '#888', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
+            </button>
+          </div>
+        )}
+
+        {/* Mobile dropdown */}
+        {isMobile && navMenuOpen && (
+          <div style={{ position: 'absolute', top: '100%', right: '1rem', zIndex: 100, background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 10, padding: '0.4rem', minWidth: 190, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }} onClick={() => setNavMenuOpen(false)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 7, background: '#12121c', marginBottom: '0.2rem' }}>
+              <span style={{ fontSize: '0.72rem', color: '#888' }}>👤</span>
+              <span style={{ fontSize: '0.78rem', color: '#aaa', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{penerimaName}</span>
             </div>
-          )}
-          <button onClick={showRiwayat} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.65rem', borderRadius: 8, background: '#12121c', border: '1px solid #2a2a3a', color: '#888', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}>
-            <ScrollText size={13} /><span style={{ display: isMobile ? 'none' : 'inline' }}>Riwayat</span>
-          </button>
-          <span style={{ fontSize: '0.72rem', color: '#888', background: '#12121c', border: '1px solid #2a2a3a', borderRadius: 6, padding: '0.25rem 0.6rem' }}>
-            👤 {penerimaName}
-          </span>
-          <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 700, color: '#7c6bff' }}>
-            {currentIdx + 1}/{soalUjian.length}
-          </span>
-        </div>
+            <button onClick={showRiwayat} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.82rem', fontFamily: 'inherit', textAlign: 'left' }}>
+              <ScrollText size={14} /> Riwayat
+            </button>
+          </div>
+        )}
       </header>
+
+      {/* Timer bar below navbar — only on mobile when timer is active */}
+      {isMobile && pakaiWaktu && (
+        <div style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+          <Clock size={13} color={isDanger ? '#ff5c5c' : isWarning ? '#ffb347' : '#555'} />
+          <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 700, color: isDanger ? '#ff5c5c' : isWarning ? '#ffb347' : '#888', animation: isDanger ? 'pulse 0.7s ease-in-out infinite' : 'none' }}>
+            {formatTimer(timeLeft)}
+          </span>
+          <span style={{ fontSize: '0.7rem', color: '#555' }}>— {matkulName}</span>
+        </div>
+      )}
 
       <div style={{ height: 4, background: '#2a2a3a' }}>
         <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg, #7c6bff, #ff6b9d)', transition: 'width 0.3s' }} />

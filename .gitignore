@@ -35,9 +35,3 @@ next-env.d.ts
 # Misc
 *.bak
 *.orig
-*.tsx.bak
-*.tsx.orig
-*page.tsx.bak
-*page.tsx.orig
-
-update_jawaban.js

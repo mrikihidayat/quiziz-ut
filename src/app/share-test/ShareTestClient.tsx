@@ -645,21 +645,21 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList, uj
     return (
       <div style={{ minHeight: '100vh', background: '#0f0f17', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' as any }}>
         {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
-        <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <img src="/logo.png" alt="Logo" style={{ height: 38, width: 'auto', display: 'block', borderRadius: 6 }} />
-            <div>
-              <p style={{ fontSize: '0.68rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ujian Latihan</p>
-              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8e8f0' }}>{matkulName}</p>
+        <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: '1 1 0' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: 30, width: 'auto', display: 'block', borderRadius: 6, flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: '0.6rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ujian Latihan</p>
+              <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#e8e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{matkulName}</p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button onClick={showRiwayat} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.75rem', borderRadius: 8, background: '#12121c', border: '1px solid #2a2a3a', color: '#888', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'inherit' }}>
-              <ScrollText size={13} /><span style={{ display: isMobile ? 'none' : 'inline' }}>Riwayat</span>
-            </button>
-            <span style={{ fontSize: '0.72rem', color: '#888', background: '#12121c', border: '1px solid #2a2a3a', borderRadius: 6, padding: '0.25rem 0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+            <span style={{ fontSize: '0.68rem', color: '#888', background: '#12121c', border: '1px solid #2a2a3a', borderRadius: 6, padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', maxWidth: isMobile ? 80 : 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               👤 {penerimaName}
             </span>
+            <button onClick={showRiwayat} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem 0.5rem', borderRadius: 8, background: '#12121c', border: '1px solid #2a2a3a', color: '#888', cursor: 'pointer', fontFamily: 'inherit' }} title="Riwayat">
+              <ScrollText size={14} />
+            </button>
           </div>
         </header>
 
@@ -791,13 +791,16 @@ export default function ShareTestClient({ matkulName, penerimaName, soalList, uj
     return (
       <div style={{ minHeight: '100vh', background: '#0f0f17', padding: '0 0 4rem', fontFamily: 'system-ui, sans-serif', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' as any }}>
         {isBlackout && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 99999 }} />}
-        <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <img src="/logo.png" alt="Logo" style={{ height: 38, width: 'auto', display: 'block', borderRadius: 6 }} />
-            <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#e8e8f0' }}>Hasil Ujian — {matkulName}</p>
+        <header style={{ background: '#1a1a24', borderBottom: '1px solid #2a2a3a', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: '1 1 0' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: 30, width: 'auto', display: 'block', borderRadius: 6, flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: '0.6rem', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Hasil Ujian</p>
+              <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#e8e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{matkulName}</p>
+            </div>
           </div>
-          <button onClick={showRiwayat} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.75rem', borderRadius: 8, background: '#12121c', border: '1px solid #2a2a3a', color: '#888', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'inherit' }}>
-            <ScrollText size={13} /> Riwayat
+          <button onClick={showRiwayat} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem 0.5rem', borderRadius: 8, background: '#12121c', border: '1px solid #2a2a3a', color: '#888', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }} title="Riwayat">
+            <ScrollText size={14} />
           </button>
         </header>
 

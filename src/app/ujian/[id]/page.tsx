@@ -599,9 +599,11 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
       <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
         <header style={{
           borderBottom: '1px solid var(--border)', background: 'var(--surface)',
-          padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: '0.5rem', flexWrap: 'nowrap',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {/* Kiri: tombol back + nama matkul */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: '1 1 0' }}>
             <button onClick={async () => {
               const r = await Swal.fire({
                 icon: 'question', title: 'Keluar Ujian?', text: 'Kemajuan ujian tidak akan tersimpan.',
@@ -615,27 +617,28 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
                 }
                 setFase('setup');
               }
-            }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+            }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
               <ArrowLeft size={20} />
             </button>
-            <div>
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>TES UJIAN</p>
-              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text)' }}>{matkulName}</p>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>TES UJIAN</p>
+              <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{matkulName}</p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {/* Kanan: timer + counter + riwayat + theme */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
             {pakaiWaktu && (
               <div style={{
-                display: 'flex', alignItems: 'center', gap: '0.4rem',
-                padding: '0.4rem 0.85rem', borderRadius: 8,
+                display: 'flex', alignItems: 'center', gap: '0.3rem',
+                padding: '0.35rem 0.6rem', borderRadius: 8,
                 background: isDanger ? 'rgba(255,92,92,0.15)' : isWarning ? 'rgba(255,179,71,0.15)' : 'var(--surface-2)',
                 border: `1px solid ${isDanger ? 'rgba(255,92,92,0.4)' : isWarning ? 'rgba(255,179,71,0.4)' : 'var(--border)'}`,
                 transition: 'all 0.3s',
               }}>
-                <Clock size={14} color={isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'} />
+                <Clock size={13} color={isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'} />
                 <span style={{
-                  fontFamily: "'Space Mono', monospace", fontSize: '0.9rem', fontWeight: 700,
+                  fontFamily: "'Space Mono', monospace", fontSize: '0.8rem', fontWeight: 700,
                   color: isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)',
                   animation: isDanger ? 'pulse 0.7s ease-in-out infinite' : 'none',
                 }}>
@@ -643,21 +646,21 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
                 </span>
               </div>
             )}
-            <button onClick={showRiwayat} style={{
-              display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.65rem',
-              borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)',
-              color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit',
-            }}>
-              <ScrollText size={13} /> <span style={{ display: 'none' }}>Riwayat</span>📜
-            </button>
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent)' }}>
-              {currentIdx + 1} / {soalUjian.length}
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.82rem', fontWeight: 700, color: 'var(--accent)', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.35rem 0.5rem', whiteSpace: 'nowrap' }}>
+              {currentIdx + 1}/{soalUjian.length}
             </span>
+            <button onClick={showRiwayat} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem 0.5rem',
+              borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)',
+              color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
+            }} title="Riwayat">
+              <ScrollText size={14} />
+            </button>
             <button onClick={toggleThemeHandler} style={{
               background: 'var(--surface-2)', border: '1px solid var(--border)',
-              borderRadius: 8, padding: '0.4rem 0.5rem', cursor: 'pointer', color: 'var(--text-muted)',
+              borderRadius: 8, padding: '0.35rem 0.5rem', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
             </button>
           </div>
         </header>

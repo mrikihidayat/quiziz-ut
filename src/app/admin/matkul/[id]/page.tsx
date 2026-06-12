@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 
 type Soal = {
   id: string;
+  nomor_soal: number;
   pertanyaan: string;
   pilihan_a: string;
   pilihan_b: string;
@@ -27,6 +28,7 @@ type Soal = {
 type FormState = Omit<Soal, 'id' | 'created_at'>;
 
 const emptyForm: FormState = {
+  nomor_soal: 0,
   pertanyaan: '',
   pilihan_a: '',
   pilihan_b: '',
@@ -223,7 +225,7 @@ export default function KelolaSoal({ params }: { params: Promise<{ id: string }>
     setLoading(true);
     const [{ data: matkul }, { data: soal }] = await Promise.all([
       supabase.from('matkul').select('nama_matkul').eq('id', matkulId).single(),
-      supabase.from('soal').select('*').eq('matkul_id', matkulId).order('created_at', { ascending: true }),
+      supabase.from('soal').select('*').eq('matkul_id', matkulId).order('nomor_soal', { ascending: true }),
     ]);
     if (matkul) setMatkulName(matkul.nama_matkul);
     if (soal) setSoalList(soal);
@@ -233,6 +235,7 @@ export default function KelolaSoal({ params }: { params: Promise<{ id: string }>
   function handleEdit(soal: Soal) {
     setEditingId(soal.id);
     setFormData({
+      nomor_soal: soal.nomor_soal,
       pertanyaan: soal.pertanyaan,
       pilihan_a: soal.pilihan_a,
       pilihan_b: soal.pilihan_b,
@@ -265,9 +268,12 @@ export default function KelolaSoal({ params }: { params: Promise<{ id: string }>
         Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan perubahan.', ...swalBg });
       }
     } else {
+      const nextNomor = soalList.length > 0
+        ? Math.max(...soalList.map(s => s.nomor_soal ?? 0)) + 1
+        : 1;
       const { data, error } = await supabase
         .from('soal')
-        .insert([{ ...formData, matkul_id: matkulId }])
+        .insert([{ ...formData, matkul_id: matkulId, nomor_soal: nextNomor }])
         .select();
       if (!error && data) {
         setSoalList([...soalList, data[0]]);

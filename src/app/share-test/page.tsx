@@ -57,6 +57,7 @@ export default async function ShareTestPage({ searchParams }: PageProps) {
       matkulName={matkulName}
       penerimaName={tokenData.penerima_nama}
       soalList={soalList}
+      ujianId={tokenData.matkul_id}
     />
   );
 }

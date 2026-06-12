@@ -1,21 +1,106 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
 
-// Variabel global sementara untuk penyimpanan OTP di server
-declare global {
-  var adminOtpCache: { code: string | null; expiresAt: number | null };
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const OTP_COOLDOWN_MS = 60 * 1000; // 60 detik cooldown
+const OTP_DAILY_LIMIT = 2;         // maksimal 2x kirim per hari
+
+/** Hitung timestamp awal hari berikutnya (midnight WIB = UTC+7) */
+function nextMidnightWIB(): number {
+  const now = new Date();
+  const wibOffset = 7 * 60 * 60 * 1000;
+  const wibNow = new Date(now.getTime() + wibOffset);
+  const nextMidnight = new Date(Date.UTC(
+    wibNow.getUTCFullYear(),
+    wibNow.getUTCMonth(),
+    wibNow.getUTCDate() + 1,
+    0, 0, 0, 0
+  ));
+  return nextMidnight.getTime() - wibOffset;
 }
-global.adminOtpCache = global.adminOtpCache || { code: null, expiresAt: null };
 
 export async function POST() {
   try {
-    // 1. Generate 6 digit OTP acak
+    const now = Date.now();
+
+    // Ambil state dari Supabase (1 baris, id = 1)
+    const { data: stateRow, error: fetchError } = await supabaseAdmin
+      .from('otp_state')
+      .select('*')
+      .eq('id', 1)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      // PGRST116 = row not found (belum ada baris, akan dibuat di bawah)
+      console.error('Gagal baca otp_state:', fetchError);
+      return NextResponse.json({ error: 'Gagal membaca state OTP.' }, { status: 500 });
+    }
+
+    // Gunakan nilai default jika baris belum ada
+    let daily_count: number = stateRow?.daily_count ?? 0;
+    let daily_reset_at: number | null = stateRow?.daily_reset_at ?? null;
+    const last_sent_at: number | null = stateRow?.last_sent_at ?? null;
+
+    // Reset kuota harian jika sudah melewati waktu reset
+    if (daily_reset_at && now >= daily_reset_at) {
+      daily_count = 0;
+      daily_reset_at = null;
+    }
+
+    // Cek kuota harian
+    if (daily_count >= OTP_DAILY_LIMIT) {
+      const resetAt = daily_reset_at ?? nextMidnightWIB();
+      const sisaMs = resetAt - now;
+      const sisaJam = Math.floor(sisaMs / (1000 * 60 * 60));
+      const sisaMenit = Math.floor((sisaMs % (1000 * 60 * 60)) / (1000 * 60));
+      return NextResponse.json(
+        {
+          error: `Kuota harian OTP habis. Coba lagi dalam ${sisaJam}j ${sisaMenit}m.`,
+          type: 'daily_limit',
+          resetAt,
+        },
+        { status: 429 }
+      );
+    }
+
+    // Cek cooldown 60 detik
+    if (last_sent_at && now - last_sent_at < OTP_COOLDOWN_MS) {
+      const sisaDetik = Math.ceil((OTP_COOLDOWN_MS - (now - last_sent_at)) / 1000);
+      return NextResponse.json(
+        { error: `Tunggu ${sisaDetik} detik sebelum meminta OTP baru.`, type: 'cooldown', cooldownRemaining: sisaDetik },
+        { status: 429 }
+      );
+    }
+
+    // Generate 6 digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // Aktif 5 menit
+    const expiresAt = now + 5 * 60 * 1000; // aktif 5 menit
+    const newCount = daily_count + 1;
+    const newResetAt = daily_reset_at ?? nextMidnightWIB();
 
-    global.adminOtpCache = { code: otpCode, expiresAt };
+    // Simpan ke Supabase (upsert 1 baris)
+    const { error: upsertError } = await supabaseAdmin
+      .from('otp_state')
+      .upsert({
+        id: 1,
+        code: otpCode,
+        expires_at: expiresAt,
+        last_sent_at: now,
+        daily_count: newCount,
+        daily_reset_at: newResetAt,
+      });
 
-    // 2. Konfigurasi transport Nodemailer via SMTP Gmail
+    if (upsertError) {
+      console.error('Gagal simpan otp_state:', upsertError);
+      return NextResponse.json({ error: 'Gagal menyimpan state OTP.' }, { status: 500 });
+    }
+
+    // Kirim email via Nodemailer
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -24,7 +109,7 @@ export async function POST() {
       },
     });
 
-    // 3. Konten email OTP
+    const sisaKuota = OTP_DAILY_LIMIT - newCount;
     const mailOptions = {
       from: `"Quizizz System Gatekeeper" <${process.env.SMTP_USER}>`,
       to: process.env.ADMIN_RECEIVER_EMAIL,
@@ -37,12 +122,17 @@ export async function POST() {
             ${otpCode}
           </div>
           <p style="color: #ef4444; font-size: 12px; text-align: center;">*Kode ini hanya berlaku selama 5 menit.</p>
+          <p style="color: #6b7280; font-size: 11px; text-align: center;">Sisa kuota OTP hari ini: ${sisaKuota} kali</p>
         </div>
       `,
     };
 
     await transporter.sendMail(mailOptions);
-    return NextResponse.json({ success: true, message: 'OTP berhasil dikirim ke email.' });
+    return NextResponse.json({
+      success: true,
+      message: 'OTP berhasil dikirim ke email.',
+      remainingQuota: sisaKuota,
+    });
 
   } catch (error: unknown) {
     console.error('Gagal Kirim OTP:', error);

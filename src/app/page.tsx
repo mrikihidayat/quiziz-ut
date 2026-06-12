@@ -8,7 +8,7 @@ import {
   Upload, BookOpen, Plus, Loader2, LayoutDashboard,
   FileText, ChevronRight, Trash2, AlertCircle, CheckCircle2,
   Sun, Moon, ClipboardList, ClipboardPaste, Share2, Eye,
-  ShieldCheck, ShieldOff, Copy, ExternalLink, KeyRound,
+  ShieldCheck, ShieldOff, Copy, ExternalLink, KeyRound, Search,
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -40,6 +40,7 @@ export default function AdminDashboard() {
   const [theme, setThemeState] = useState<'dark' | 'light'>('dark');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
+  const [shareSearch, setShareSearch] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
 
   // === ESSAY STATE ===
@@ -55,11 +56,25 @@ export default function AdminDashboard() {
   const [isOtpSent, setIsOtpSent] = useState<boolean>(false);
   const [otpInput, setOtpInput] = useState<string>('');
   const [otpLoading, setOtpLoading] = useState<boolean>(false);
+  const [otpCooldown, setOtpCooldown] = useState<number>(0); // detik tersisa cooldown
+  const [otpBlocked, setOtpBlocked] = useState<string>(''); // pesan kuota harian habis
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (token) setIsAuthenticated(true);
   }, []);
+
+  // Countdown timer untuk cooldown OTP
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setOtpCooldown(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [otpCooldown]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -364,21 +379,83 @@ export default function AdminDashboard() {
     setOtpLoading(true);
     Swal.fire({
       title: 'Mengirim OTP...',
-      text: 'Silakan tunggu, kode sedang dikirim ke email Riki.',
+      html: `<p style="color:${theme==='dark'?'#a0a0b8':'#555'}; font-size:0.9rem; margin:0">Kode akses sedang dikirim ke email.<br/>Mohon tunggu sebentar.</p>`,
       allowOutsideClick: false,
+      showConfirmButton: false,
       didOpen: () => Swal.showLoading(),
       ...swalTheme(),
     });
     try {
       const res = await fetch('/api/admin/send-otp', { method: 'POST' });
+      const data = await res.json();
+      const accent = theme === 'dark' ? '#a78bfa' : '#7c6bff';
+      const muted  = theme === 'dark' ? '#a0a0b8' : '#666';
       if (res.ok) {
         setIsOtpSent(true);
-        Swal.fire({ icon: 'success', title: 'OTP Terkirim!', text: 'Periksa kotak masuk email Riki.', timer: 2000, showConfirmButton: false, ...swalTheme() });
+        setOtpCooldown(60);
+        Swal.fire({
+          icon: 'success',
+          title: 'OTP Terkirim!',
+          html: `
+            <p style="color:${muted}; font-size:0.88rem; margin:0 0 10px">
+              Kode 6-digit telah dikirim ke email tujuan.<br/>Segera cek inbox & masukkan sebelum kedaluwarsa.
+            </p>
+            <div style="background:${theme==='dark'?'rgba(167,139,250,0.1)':'#f3f0ff'}; border-radius:10px; padding:8px 14px; display:inline-block">
+              <span style="color:${accent}; font-size:0.82rem; font-weight:600">Berlaku 5 menit &nbsp;·&nbsp; Sisa kuota hari ini: ${data.remainingQuota ?? '?'}x</span>
+            </div>`,
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false,
+          ...swalTheme(),
+        });
+      } else if (res.status === 429 && data.type === 'daily_limit') {
+        setOtpBlocked(data.error ?? 'Kuota harian OTP habis. Coba lagi besok.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Kuota Harian Habis',
+          html: `
+            <p style="color:${muted}; font-size:0.88rem; margin:0 0 10px">${data.error}</p>
+            <div style="background:${theme==='dark'?'rgba(239,68,68,0.1)':'#fff1f1'}; border-radius:10px; padding:8px 14px; display:inline-block">
+              <span style="color:#ef4444; font-size:0.82rem; font-weight:600">Maksimal permintaan OTP per hari telah tercapai</span>
+            </div>`,
+          confirmButtonText: 'Mengerti',
+          confirmButtonColor: '#ef4444',
+          ...swalTheme(),
+        });
+      } else if (res.status === 429 && data.type === 'cooldown') {
+        setOtpCooldown(data.cooldownRemaining ?? 60);
+        Swal.fire({
+          icon: 'warning',
+          title: 'Terlalu Cepat',
+          html: `
+            <p style="color:${muted}; font-size:0.88rem; margin:0 0 10px">
+              OTP baru baru saja dikirim. Tunggu cooldown selesai sebelum meminta ulang.
+            </p>
+            <div style="background:${theme==='dark'?'rgba(251,191,36,0.1)':'#fffbeb'}; border-radius:10px; padding:8px 14px; display:inline-block">
+              <span style="color:#f59e0b; font-size:0.85rem; font-weight:700">Sisa waktu: ${data.cooldownRemaining ?? '?'} detik</span>
+            </div>`,
+          confirmButtonText: 'Oke, Saya Tunggu',
+          confirmButtonColor: '#f59e0b',
+          ...swalTheme(),
+        });
       } else {
-        Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Gagal mengirim email OTP, hubungi server.', ...swalTheme() });
+        Swal.fire({
+          icon: 'error',
+          title: 'Pengiriman Gagal',
+          html: `<p style="color:${muted}; font-size:0.88rem; margin:0">Terjadi kendala saat mengirim email OTP.<br/>Coba beberapa saat lagi atau hubungi server.</p>`,
+          confirmButtonText: 'Tutup',
+          ...swalTheme(),
+        });
       }
     } catch {
-      Swal.fire({ icon: 'error', title: 'Error!', text: 'Terjadi gangguan koneksi jaringan.', ...swalTheme() });
+      const muted = theme === 'dark' ? '#a0a0b8' : '#666';
+      Swal.fire({
+        icon: 'error',
+        title: 'Koneksi Bermasalah',
+        html: `<p style="color:${muted}; font-size:0.88rem; margin:0">Tidak dapat terhubung ke server.<br/>Periksa koneksi internet kamu dan coba lagi.</p>`,
+        confirmButtonText: 'Tutup',
+        ...swalTheme(),
+      });
     } finally {
       setOtpLoading(false);
     }
@@ -408,6 +485,12 @@ export default function AdminDashboard() {
       setOtpLoading(false);
     }
   }
+
+  const filteredShareTokens = shareTokens.filter(t => {
+    const q = shareSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (t.penerima_nama || '').toLowerCase().includes(q) || (t.matkul?.nama_matkul || '').toLowerCase().includes(q);
+  });
 
   // === RENDER GATEKEEPER JIKA BELUM LOGIN ===
   if (!isAuthenticated) {
@@ -552,23 +635,32 @@ export default function AdminDashboard() {
             <p style={{ color: 'rgba(170,170,200,0.7)', fontSize: '0.875rem', marginBottom: '2rem', lineHeight: 1.6 }}>
               {isOtpSent
                 ? 'Kode 6 digit telah dikirim ke email tujuan Riki. Segera masukkan sebelum kedaluwarsa.'
-                : 'Dashboard ini dilindungi OTP. Klik tombol di bawah untuk mengirim kode akses ke email Riki.'}
+                : 'Dashboard ini dilindungi OTP. Klik tombol di bawah untuk mengirim kode akses ke email bahwa anda adalah Riki.'}
             </p>
 
             {/* Content based on state */}
             {!isOtpSent ? (
+              otpBlocked ? (
+                <div style={{
+                  background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
+                  borderRadius: 14, padding: '1rem 1.25rem', textAlign: 'center',
+                }}>
+                  <p style={{ color: '#ef4444', fontWeight: 700, fontSize: '0.9rem', margin: 0 }}>Kuota Harian Habis</p>
+                  <p style={{ color: '#fca5a5', fontSize: '0.8rem', margin: '6px 0 0' }}>{otpBlocked}</p>
+                </div>
+              ) : (
               <button
                 onClick={handleMintaOtp}
-                disabled={otpLoading}
+                disabled={otpLoading || otpCooldown > 0}
                 className="otp-btn-primary"
                 style={{
                   width: '100%', padding: '0.875rem 1.5rem',
-                  background: otpLoading
+                  background: (otpLoading || otpCooldown > 0)
                     ? 'rgba(124,107,255,0.4)'
                     : 'linear-gradient(135deg, #7c6bff 0%, #9b59e8 100%)',
                   color: '#fff', border: 'none', borderRadius: 14,
                   fontWeight: 700, fontSize: '0.975rem',
-                  cursor: otpLoading ? 'not-allowed' : 'pointer',
+                  cursor: (otpLoading || otpCooldown > 0) ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                   boxShadow: '0 4px 20px rgba(124,107,255,0.3)',
                   letterSpacing: '0.01em',
@@ -576,8 +668,11 @@ export default function AdminDashboard() {
               >
                 {otpLoading
                   ? <><Loader2 size={18} className="spin" /> Mengirim ke email...</>
-                  : <><KeyRound size={17} strokeWidth={2.2} /> Kirim Kode OTP ke Email</>}
+                  : otpCooldown > 0
+                    ? <><Loader2 size={18} /> Tunggu {otpCooldown}d untuk kirim ulang</>
+                    : <><KeyRound size={17} strokeWidth={2.2} /> Kirim Kode OTP ke Email</>}
               </button>
+              )
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* OTP digit input */}
@@ -648,7 +743,7 @@ export default function AdminDashboard() {
 
             {/* Footer note */}
             <p style={{ marginTop: '1.75rem', fontSize: '0.72rem', color: 'rgba(120,120,160,0.5)', letterSpacing: '0.03em' }}>
-              Sistem Kuis UT · Akses terbatas untuk Riki
+              Sistem Kuis UT · Akses terbatas hanya untuk Riki
             </p>
           </div>
         </div>
@@ -1114,16 +1209,37 @@ export default function AdminDashboard() {
                 <ExternalLink size={16} color="var(--accent-3)" />
                 <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text)' }}>Monitoring Share Links</h2>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 20, padding: '0.15rem 0.6rem' }}>
-                  {shareTokens.length} token
+                  {shareSearch ? `${filteredShareTokens.length} / ${shareTokens.length}` : shareTokens.length} token
                 </span>
               </div>
-              <button onClick={() => setShowShareModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1 }}>✕</button>
+              <button onClick={() => { setShowShareModal(false); setShareSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1 }}>✕</button>
             </div>
+
+            {shareTokens.length > 0 && (
+              <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  value={shareSearch}
+                  onChange={(e) => setShareSearch(e.target.value)}
+                  placeholder="Cari penerima atau mata kuliah..."
+                  style={{
+                    width: '100%', padding: '0.55rem 0.75rem 0.55rem 2.1rem', borderRadius: 10,
+                    border: '1px solid var(--border)', background: 'var(--surface-2)',
+                    color: 'var(--text)', fontSize: '0.82rem', fontFamily: 'inherit', outline: 'none',
+                  }}
+                />
+              </div>
+            )}
 
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {shareTokens.length === 0 ? (
                 <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 0', fontSize: '0.85rem' }}>
                   Belum ada share link yang dibuat.
+                </p>
+              ) : filteredShareTokens.length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 0', fontSize: '0.85rem' }}>
+                  Tidak ada hasil untuk &quot;{shareSearch}&quot;.
                 </p>
               ) : (
                 <table className="share-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
@@ -1137,7 +1253,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {shareTokens.map(t => (
+                    {filteredShareTokens.map(t => (
                       <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td data-label="Penerima" style={{ padding: '0.75rem', color: 'var(--text)', fontWeight: 600 }}>{t.penerima_nama}</td>
                         <td data-label="Mata Kuliah" style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>{t.matkul?.nama_matkul || '—'}</td>

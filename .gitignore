@@ -1,38 +1,43 @@
-# 1. Dependencies (Folder hasil download npm install - ukurannya bergiga-giga)
+# Dependencies
 node_modules/
-/pnpm-lock.yaml
-/yarn.lock
-/package-lock.json
+.pnp
+.pnp.js
 
-# 2. Next.js Build Output (Folder hasil compile otomatis Next.js)
+# Build output
 .next/
 out/
 build/
+dist/
 
-# 3. Environment Variables (FILE RAHASIA - Password DB, API Key, dll)
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-*.env.local
 
-# 4. OS & Text Editor Files (File sampah bawaan Windows/Mac dan VS Code)
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.swp
+# Vercel
+.vercel
 
-# 5. Logs (File catatan error kalau node crash)
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-set-all-done.js
+# OS files
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Misc
+*.bak
+*.orig
+*.tsx.bak
+*.tsx.orig
+*page.tsx.bak
+*page.tsx.orig
+
+update_jawaban.js

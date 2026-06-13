@@ -109,6 +109,12 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
 
   const [theme, setThemeState] = useState<'dark' | 'light'>('dark');
   const [navMenuOpen, setNavMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      setIsMobile(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent));
+    }
+  }, []);
 
   useEffect(() => {
     const t = initTheme();
@@ -623,37 +629,56 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
             </div>
           </div>
 
-          {/* Kanan: timer (selalu keliatan) + hamburger */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-            {pakaiWaktu && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '0.3rem',
-                padding: '0.35rem 0.6rem', borderRadius: 8,
-                background: isDanger ? 'rgba(255,92,92,0.15)' : isWarning ? 'rgba(255,179,71,0.15)' : 'var(--surface-2)',
-                border: `1px solid ${isDanger ? 'rgba(255,92,92,0.4)' : isWarning ? 'rgba(255,179,71,0.4)' : 'var(--border)'}`,
-                transition: 'all 0.3s',
-              }}>
-                <Clock size={13} color={isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'} />
-                <span style={{
-                  fontFamily: "'Space Mono', monospace", fontSize: '0.8rem', fontWeight: 700,
-                  color: isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)',
-                  animation: isDanger ? 'pulse 0.7s ease-in-out infinite' : 'none',
+          {/* Desktop: timer + hamburger (Riwayat + Theme + counter) */}
+          {!isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+              {pakaiWaktu && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.3rem',
+                  padding: '0.35rem 0.6rem', borderRadius: 8,
+                  background: isDanger ? 'rgba(255,92,92,0.15)' : isWarning ? 'rgba(255,179,71,0.15)' : 'var(--surface-2)',
+                  border: `1px solid ${isDanger ? 'rgba(255,92,92,0.4)' : isWarning ? 'rgba(255,179,71,0.4)' : 'var(--border)'}`,
+                  transition: 'all 0.3s',
                 }}>
-                  {formatTimer(timeLeft)}
-                </span>
-              </div>
-            )}
-            {/* Hamburger button */}
-            <button onClick={() => setNavMenuOpen(o => !o)} style={{
-              display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px',
-              width: 36, height: 36, background: 'var(--surface-2)', border: '1px solid var(--border)',
-              borderRadius: 8, cursor: 'pointer', flexShrink: 0, padding: 0,
-            }}>
-              <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
-              <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', opacity: navMenuOpen ? 0 : 1 }} />
-              <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
-            </button>
-          </div>
+                  <Clock size={13} color={isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'} />
+                  <span style={{
+                    fontFamily: "'Space Mono', monospace", fontSize: '0.8rem', fontWeight: 700,
+                    color: isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)',
+                    animation: isDanger ? 'pulse 0.7s ease-in-out infinite' : 'none',
+                  }}>
+                    {formatTimer(timeLeft)}
+                  </span>
+                </div>
+              )}
+              <button onClick={() => setNavMenuOpen(o => !o)} style={{
+                display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px',
+                width: 36, height: 36, background: 'var(--surface-2)', border: '1px solid var(--border)',
+                borderRadius: 8, cursor: 'pointer', flexShrink: 0, padding: 0,
+              }}>
+                <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
+                <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', opacity: navMenuOpen ? 0 : 1 }} />
+                <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
+              </button>
+            </div>
+          )}
+
+          {/* Mobile: nomor soal + hamburger (tanpa timer) */}
+          {isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+              <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent)' }}>
+                {currentIdx + 1}/{soalUjian.length}
+              </span>
+              <button onClick={() => setNavMenuOpen(o => !o)} style={{
+                display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px',
+                width: 36, height: 36, background: 'var(--surface-2)', border: '1px solid var(--border)',
+                borderRadius: 8, cursor: 'pointer', flexShrink: 0, padding: 0,
+              }}>
+                <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
+                <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', opacity: navMenuOpen ? 0 : 1 }} />
+                <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
+              </button>
+            </div>
+          )}
 
           {/* Dropdown menu */}
           {navMenuOpen && (
@@ -663,12 +688,13 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
               borderRadius: 10, padding: '0.4rem', minWidth: 180,
               boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
             }} onClick={() => setNavMenuOpen(false)}>
-              {/* Counter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 7, marginBottom: '0.2rem', background: 'var(--surface-2)' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Soal</span>
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent)', marginLeft: 'auto' }}>{currentIdx + 1} / {soalUjian.length}</span>
-              </div>
-              {/* Riwayat */}
+              {/* Counter (desktop only — mobile shows it inline) */}
+              {!isMobile && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 7, marginBottom: '0.2rem', background: 'var(--surface-2)' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Soal</span>
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent)', marginLeft: 'auto' }}>{currentIdx + 1} / {soalUjian.length}</span>
+                </div>
+              )}
               <button onClick={showRiwayat} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
                 padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none',
@@ -677,7 +703,6 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
               }}>
                 <ScrollText size={14} /> Riwayat
               </button>
-              {/* Theme toggle */}
               <button onClick={toggleThemeHandler} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
                 padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none',
@@ -690,6 +715,17 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
             </div>
           )}
         </header>
+
+        {/* Timer bar di bawah navbar — hanya mobile saat timer aktif */}
+        {isMobile && pakaiWaktu && (
+          <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            <Clock size={13} color={isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'} />
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.9rem', fontWeight: 700, color: isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)', animation: isDanger ? 'pulse 0.7s ease-in-out infinite' : 'none' }}>
+              {formatTimer(timeLeft)}
+            </span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>— {matkulName}</span>
+          </div>
+        )}
 
         <div style={{ height: 4, background: 'var(--border)' }}>
           <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg, var(--accent), var(--accent-2))', transition: 'width 0.3s' }} />
@@ -1024,33 +1060,82 @@ export default function UjianPage({ params }: { params: Promise<{ id: string }> 
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <header style={{
         borderBottom: '1px solid var(--border)', background: 'var(--surface)',
-        padding: '1.1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>
-            <ArrowLeft size={15} /> Dashboard
+        {/* Kiri: back + logo + nama */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: '1 1 0' }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600, flexShrink: 0 }}>
+            <ArrowLeft size={15} /> {!isMobile && 'Dashboard'}
           </Link>
-          <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <img src="/logo.png" alt="Logo" style={{ height: 34, width: 'auto', display: 'block', borderRadius: 6 }} />
-            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text)' }}>Tes Ujian — {matkulName}</span>
+          <div style={{ width: 1, height: 20, background: 'var(--border)', flexShrink: 0 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+            <img src="/logo.png" alt="Logo" style={{ height: 30, width: 'auto', display: 'block', borderRadius: 6, flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tes Ujian</p>
+              <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{matkulName}</p>
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button onClick={showRiwayat} style={{
-            display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.75rem',
-            borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)',
-            color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'inherit',
+
+        {/* Desktop: tombol inline */}
+        {!isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            <button onClick={showRiwayat} style={{
+              display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.75rem',
+              borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)',
+              color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'inherit',
+            }}>
+              <ScrollText size={13} /> Riwayat
+            </button>
+            <button onClick={toggleThemeHandler} style={{
+              background: 'var(--surface-2)', border: '1px solid var(--border)',
+              borderRadius: 8, padding: '0.4rem 0.5rem', cursor: 'pointer', color: 'var(--text-muted)',
+            }}>
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          </div>
+        )}
+
+        {/* Mobile: hamburger */}
+        {isMobile && (
+          <button onClick={() => setNavMenuOpen(o => !o)} style={{
+            display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px',
+            width: 36, height: 36, background: 'var(--surface-2)', border: '1px solid var(--border)',
+            borderRadius: 8, cursor: 'pointer', flexShrink: 0, padding: 0,
           }}>
-            <ScrollText size={13} /> Riwayat
+            <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
+            <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', opacity: navMenuOpen ? 0 : 1 }} />
+            <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
           </button>
-          <button onClick={toggleThemeHandler} style={{
-            background: 'var(--surface-2)', border: '1px solid var(--border)',
-            borderRadius: 8, padding: '0.4rem 0.5rem', cursor: 'pointer', color: 'var(--text-muted)',
-          }}>
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
-        </div>
+        )}
+
+        {/* Mobile dropdown */}
+        {isMobile && navMenuOpen && (
+          <div style={{
+            position: 'absolute', top: '100%', right: '1rem', zIndex: 100,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 10, padding: '0.4rem', minWidth: 180,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          }} onClick={() => setNavMenuOpen(false)}>
+            <button onClick={showRiwayat} style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none',
+              border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+              fontSize: '0.82rem', fontFamily: 'inherit', textAlign: 'left',
+            }}>
+              <ScrollText size={14} /> Riwayat
+            </button>
+            <button onClick={toggleThemeHandler} style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none',
+              border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+              fontSize: '0.82rem', fontFamily: 'inherit', textAlign: 'left',
+            }}>
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+            </button>
+          </div>
+        )}
       </header>
 
       <main style={{ maxWidth: 540, margin: '0 auto', padding: '3rem 1.5rem' }}>

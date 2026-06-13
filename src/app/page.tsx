@@ -42,6 +42,7 @@ export default function AdminDashboard() {
   const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
   const [shareSearch, setShareSearch] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
 
   // === ESSAY STATE ===
   const [newMatkulTipe, setNewMatkulTipe] = useState<TipeUjian>("PG");
@@ -757,51 +758,87 @@ export default function AdminDashboard() {
       <header style={{
         borderBottom: '1px solid var(--border)',
         background: 'var(--surface)',
-        padding: '0.9rem 1rem',
+        padding: '0.75rem 1rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        flexWrap: 'wrap' as const,
         gap: '0.5rem',
+        position: 'relative',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <img src="/logo.png" alt="Logo" style={{ height: 44, width: 'auto', display: 'block', borderRadius: 8 }} />
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '1.05rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px' }}>QuiziZ <span style={{ color: 'var(--accent)' }}>UT</span></span>
-          </div>
+        {/* Logo + Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+          <img src="/logo.png" alt="Logo" style={{ height: 38, width: 'auto', display: 'block', borderRadius: 8, flexShrink: 0 }} />
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '1rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px', whiteSpace: 'nowrap' }}>
+            QuiziZ <span style={{ color: 'var(--accent)' }}>UT</span>
+          </span>
         </div>
-        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+
+        {/* Desktop: tombol inline */}
+        <div className="header-desktop-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <button onClick={handleViewLinks} title="Lihat semua share link" style={{
-            background: 'rgba(0, 212, 161, 0.1)',
-            border: '1px solid rgba(0, 212, 161, 0.3)',
-            borderRadius: 8,
-            padding: '0.45rem 0.8rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            color: 'var(--accent-3)',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            fontFamily: 'inherit',
+            background: 'rgba(0,212,161,0.1)', border: '1px solid rgba(0,212,161,0.3)',
+            borderRadius: 8, padding: '0.45rem 0.8rem', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            color: 'var(--accent-3)', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'inherit',
           }}>
             <Eye size={14} /> View Link
           </button>
           <button onClick={toggleTheme} title="Ganti Tema" style={{
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            padding: '0.45rem 0.6rem',
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center',
-            color: 'var(--text-muted)',
-            transition: 'all 0.2s',
+            background: 'var(--surface-2)', border: '1px solid var(--border)',
+            borderRadius: 8, padding: '0.45rem 0.6rem', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', color: 'var(--text-muted)',
           }}>
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
         </div>
+
+        {/* Mobile: hamburger */}
+        <button
+          className="header-hamburger"
+          onClick={() => setNavMenuOpen(o => !o)}
+          style={{
+            display: 'none', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px',
+            width: 36, height: 36, background: 'var(--surface-2)', border: '1px solid var(--border)',
+            borderRadius: 8, cursor: 'pointer', flexShrink: 0, padding: 0,
+          }}
+        >
+          <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
+          <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', opacity: navMenuOpen ? 0 : 1 }} />
+          <span style={{ display: 'block', width: 16, height: 2, background: 'var(--text-muted)', borderRadius: 2, transition: 'all 0.2s', transform: navMenuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
+        </button>
+
+        {/* Mobile dropdown */}
+        {navMenuOpen && (
+          <div
+            className="header-mobile-dropdown"
+            style={{
+              display: 'none', position: 'absolute', top: '100%', right: '1rem', zIndex: 100,
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 10, padding: '0.4rem', minWidth: 180,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            }}
+            onClick={() => setNavMenuOpen(false)}
+          >
+            <button onClick={handleViewLinks} style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none',
+              border: 'none', color: 'var(--accent-3)', cursor: 'pointer',
+              fontSize: '0.82rem', fontFamily: 'inherit', textAlign: 'left',
+            }}>
+              <Eye size={14} /> View Link
+            </button>
+            <button onClick={toggleTheme} style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.55rem 0.75rem', borderRadius: 7, background: 'none',
+              border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+              fontSize: '0.82rem', fontFamily: 'inherit', textAlign: 'left',
+            }}>
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+            </button>
+          </div>
+        )}
       </header>
-  
 
       <main className="dashboard-main">
 
@@ -1357,9 +1394,9 @@ export default function AdminDashboard() {
 
         /* Header action buttons wrap on tiny screens */
         @media (max-width: 480px) {
-          header .header-actions {
-            flex-wrap: wrap;
-          }
+          .header-desktop-actions { display: none !important; }
+          .header-hamburger { display: flex !important; }
+          .header-mobile-dropdown { display: block !important; }
         }
       `}</style>
     </div>

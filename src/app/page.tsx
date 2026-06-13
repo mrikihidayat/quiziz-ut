@@ -909,59 +909,54 @@ export default function AdminDashboard() {
                 </p>
               )}
               {matkulList.map((m) => (
-                <div key={m.id} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '0.5rem',
+                <div key={m.id} className="matkul-card" style={{
                   background: 'var(--surface-2)',
                   border: '1px solid var(--border)',
                   borderRadius: 10,
                   padding: '0.75rem 1rem',
                   transition: 'border-color 0.2s',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: '120px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)' }}>{m.nama_matkul}</span>
+                  {/* Baris nama + badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.55rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 0 }}>{m.nama_matkul}</span>
                     {m.tipe_ujian === 'ESSAY' && (
-                      <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: 4, background: 'rgba(255,179,71,0.15)', color: '#ffb347', border: '1px solid rgba(255,179,71,0.3)', letterSpacing: '0.03em' }}>ESSAY</span>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: 4, background: 'rgba(255,179,71,0.15)', color: '#ffb347', border: '1px solid rgba(255,179,71,0.3)', letterSpacing: '0.03em', flexShrink: 0 }}>ESSAY</span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {/* Baris tombol — full width, masing-masing flex 1 */}
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
                     {m.tipe_ujian === 'ESSAY' ? (
                       <>
-                        {/* Essay: Share | View | Kelola */}
-                        <button onClick={() => handleGenerateEssayLink(m.id, m.nama_matkul)} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: '#a78bfa', padding: '0.3rem 0.75rem', background: 'rgba(124,107,255,0.1)', border: '1px solid rgba(124,107,255,0.3)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                        <button onClick={() => handleGenerateEssayLink(m.id, m.nama_matkul)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: '#a78bfa', padding: '0.35rem 0', background: 'rgba(124,107,255,0.1)', border: '1px solid rgba(124,107,255,0.3)', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
                           <Share2 size={12} /> Share
                         </button>
                         {m.pdf_url ? (
-                          <a href={m.pdf_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-2)', textDecoration: 'none', padding: '0.3rem 0.75rem', background: 'rgba(255,107,157,0.1)', border: '1px solid rgba(255,107,157,0.3)', borderRadius: 6, whiteSpace: 'nowrap' }}>
+                          <a href={m.pdf_url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-2)', textDecoration: 'none', padding: '0.35rem 0', background: 'rgba(255,107,157,0.1)', border: '1px solid rgba(255,107,157,0.3)', borderRadius: 6 }}>
                             <Eye size={12} /> View
                           </a>
                         ) : (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0.3rem 0.75rem', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, whiteSpace: 'nowrap', opacity: 0.4 }}>
+                          <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0.35rem 0', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, opacity: 0.4 }}>
                             <Eye size={12} /> View
                           </span>
                         )}
-                        <button onClick={() => { setEssayUploadModal({ open: true, matkulId: m.id, matkulNama: m.nama_matkul }); setEssayFile(null); setEssayUploadStatus('idle'); setEssayUploadMsg(''); }} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-3)', padding: '0.3rem 0.75rem', background: 'rgba(0,212,161,0.1)', border: '1px solid rgba(0,212,161,0.25)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                        <button onClick={() => { setEssayUploadModal({ open: true, matkulId: m.id, matkulNama: m.nama_matkul }); setEssayFile(null); setEssayUploadStatus('idle'); setEssayUploadMsg(''); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-3)', padding: '0.35rem 0', background: 'rgba(0,212,161,0.1)', border: '1px solid rgba(0,212,161,0.25)', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
                           <Upload size={12} /> Kelola
                         </button>
                       </>
                     ) : (
                       <>
-                        {/* PG: Share | Tes | Kelola */}
-                        <button onClick={() => handleGenerateLink(m.id, m.nama_matkul)} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: '#a78bfa', padding: '0.3rem 0.75rem', background: 'rgba(124,107,255,0.1)', border: '1px solid rgba(124,107,255,0.3)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                        <button onClick={() => handleGenerateLink(m.id, m.nama_matkul)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: '#a78bfa', padding: '0.35rem 0', background: 'rgba(124,107,255,0.1)', border: '1px solid rgba(124,107,255,0.3)', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
                           <Share2 size={12} /> Share
                         </button>
-                        <Link href={`/ujian/${m.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-2)', textDecoration: 'none', padding: '0.3rem 0.75rem', background: 'rgba(255,107,157,0.1)', border: '1px solid rgba(255,107,157,0.3)', borderRadius: 6, whiteSpace: 'nowrap' }}>
+                        <Link href={`/ujian/${m.id}`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-2)', textDecoration: 'none', padding: '0.35rem 0', background: 'rgba(255,107,157,0.1)', border: '1px solid rgba(255,107,157,0.3)', borderRadius: 6 }}>
                           <ClipboardList size={12} /> Tes
                         </Link>
-                        <Link href={`/admin/matkul/${m.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-3)', textDecoration: 'none', padding: '0.3rem 0.75rem', background: 'rgba(0,212,161,0.1)', border: '1px solid rgba(0,212,161,0.25)', borderRadius: 6 }}>
+                        <Link href={`/admin/matkul/${m.id}`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-3)', textDecoration: 'none', padding: '0.35rem 0', background: 'rgba(0,212,161,0.1)', border: '1px solid rgba(0,212,161,0.25)', borderRadius: 6 }}>
                           Kelola <ChevronRight size={12} />
                         </Link>
                       </>
                     )}
-                    <button onClick={() => handleDeleteMatkul(m.id, m.nama_matkul)} style={{ background: 'rgba(255,92,92,0.1)', border: '1px solid rgba(255,92,92,0.25)', borderRadius: 6, padding: '0.3rem 0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--danger)' }}>
+                    <button onClick={() => handleDeleteMatkul(m.id, m.nama_matkul)} style={{ background: 'rgba(255,92,92,0.1)', border: '1px solid rgba(255,92,92,0.25)', borderRadius: 6, padding: '0.35rem 0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', flexShrink: 0 }}>
                       <Trash2 size={13} />
                     </button>
                   </div>
